@@ -1,0 +1,359 @@
+{
+  "version": "1.0",
+  "category": "type",
+  "description": "Faust type system errors and domain violations",
+  "patterns": [
+    {
+      "error_id": "type-domain-violation-sqrt",
+      "pattern": ".*sqrt.*negative.*|.*domain error.*sqrt.*",
+      "description": "Square root of negative number",
+      "common_causes": [
+        "Signal can go negative but sqrt expects >= 0",
+        "Missing absolute value or clamping",
+        "Incorrect signal range"
+      ],
+      "symptoms": [
+        "Runtime domain error",
+        "NaN values in output",
+        "Signal becomes invalid"
+      ],
+      "diagnosis_steps": [
+        "Check if input signal can be negative",
+        "Verify signal range before sqrt",
+        "Test with negative input values"
+      ],
+      "solutions": [
+        {
+          "approach": "Use absolute value",
+          "code_before": "process = sqrt;",
+          "code_after": "process = abs : sqrt;",
+          "explanation": "Take absolute value before sqrt to ensure non-negative input"
+        },
+        {
+          "approach": "Clamp to minimum zero",
+          "code_before": "process = signal : sqrt;",
+          "code_after": "process = signal : max(0) : sqrt;",
+          "explanation": "Clamp signal to >= 0 before applying sqrt"
+        },
+        {
+          "approach": "Add domain check",
+          "code_before": "process = input : sqrt;",
+          "code_after": "safe_sqrt(x) = sqrt(max(0, x));\nprocess = input : safe_sqrt;",
+          "explanation": "Create safe wrapper function that ensures valid domain"
+        }
+      ],
+      "related_errors": ["type-domain-violation-log", "type-nan-output"],
+      "severity": "error",
+      "beginner_friendly": true
+    },
+    {
+      "error_id": "type-domain-violation-log",
+      "pattern": ".*log.*non-positive.*|.*domain error.*log.*",
+      "description": "Logarithm of zero or negative number",
+      "common_causes": [
+        "Signal includes zero or negative values",
+        "Missing offset to ensure positive input",
+        "Incorrect signal scaling"
+      ],
+      "symptoms": [
+        "Runtime domain error",
+        "-inf or NaN in output",
+        "Signal processing fails"
+      ],
+      "diagnosis_steps": [
+        "Check minimum value of input signal",
+        "Verify signal is always positive",
+        "Test with zero and negative inputs"
+      ],
+      "solutions": [
+        {
+          "approach": "Add small epsilon offset",
+          "code_before": "process = log;",
+          "code_after": "epsilon = 1e-10;\nprocess = max(epsilon) : log;",
+          "explanation": "Ensure input is always > 0 by adding small epsilon"
+        },
+        {
+          "approach": "Use safe log wrapper",
+          "code_before": "process = signal : log;",
+          "code_after": "safe_log(x) = log(max(1e-10, x));\nprocess = signal : safe_log;",
+          "explanation": "Create wrapper that clamps input to safe range"
+        },
+        {
+          "approach": "Offset signal range",
+          "code_before": "process = (-1, 1) : log;",
+          "code_after": "process = (-1, 1) : +(1.1) : log;",
+          "explanation": "Shift signal range to ensure positive values"
+        }
+      ],
+      "related_errors": ["type-domain-violation-sqrt"],
+      "severity": "error",
+      "beginner_friendly": true
+    },
+    {
+      "error_id": "type-domain-violation-asin-acos",
+      "pattern": ".*asin.*domain.*|.*acos.*domain.*|.*arc.*out of range.*",
+      "description": "asin/acos input outside [-1, 1] range",
+      "common_causes": [
+        "Signal exceeds [-1, 1] bounds",
+        "Missing normalization",
+        "Incorrect amplitude scaling"
+      ],
+      "symptoms": [
+        "Runtime domain error",
+        "NaN output",
+        "Invalid trigonometric results"
+      ],
+      "diagnosis_steps": [
+        "Check signal amplitude range",
+        "Verify input is normalized to [-1, 1]",
+        "Test with extreme values"
+      ],
+      "solutions": [
+        {
+          "approach": "Clamp to valid range",
+          "code_before": "process = asin;",
+          "code_after": "process = max(-1) : min(1) : asin;",
+          "explanation": "Clamp input to [-1, 1] before asin"
+        },
+        {
+          "approach": "Normalize signal",
+          "code_before": "process = signal : acos;",
+          "code_after": "normalize(x) = max(-1, min(1, x));\nprocess = signal : normalize : acos;",
+          "explanation": "Normalize signal to safe range for acos"
+        },
+        {
+          "approach": "Scale amplitude appropriately",
+          "code_before": "process = osc(440) * 10 : asin;",
+          "code_after": "process = osc(440) * 0.9 : asin;",
+          "explanation": "Keep amplitude < 1 to stay in valid domain"
+        }
+      ],
+      "related_errors": ["type-amplitude-overflow"],
+      "severity": "error",
+      "beginner_friendly": false
+    },
+    {
+      "error_id": "type-division-by-zero",
+      "pattern": ".*division by zero.*|.*divide.*zero.*",
+      "description": "Division by zero or near-zero value",
+      "common_causes": [
+        "Denominator can reach zero",
+        "Missing zero check",
+        "Parameter allows zero value"
+      ],
+      "symptoms": [
+        "Runtime error",
+        "Inf or NaN output",
+        "Signal becomes invalid"
+      ],
+      "diagnosis_steps": [
+        "Check if denominator can be zero",
+        "Verify parameter ranges",
+        "Test with zero divisor"
+      ],
+      "solutions": [
+        {
+          "approach": "Add epsilon to denominator",
+          "code_before": "process = _ / _;",
+          "code_after": "epsilon = 1e-10;\nsafe_div(x,y) = x / max(epsilon, abs(y));\nprocess = safe_div;",
+          "explanation": "Ensure denominator never reaches zero"
+        },
+        {
+          "approach": "Check before dividing",
+          "code_before": "gain(x,y) = x/y;",
+          "code_after": "gain(x,y) = select2(y==0, x/y, 0);\nprocess = gain;",
+          "explanation": "Return 0 if denominator is zero, otherwise divide"
+        },
+        {
+          "approach": "Constrain parameter range",
+          "code_before": "divisor = hslider(\"div\", 1, 0, 10, 0.1);",
+          "code_after": "divisor = hslider(\"div\", 1, 0.1, 10, 0.1);",
+          "explanation": "Set minimum value > 0 to prevent zero"
+        }
+      ],
+      "related_errors": ["type-domain-violation-log"],
+      "severity": "error",
+      "beginner_friendly": true
+    },
+    {
+      "error_id": "type-modulo-zero",
+      "pattern": ".*modulo.*zero.*|.*mod.*zero.*",
+      "description": "Modulo operation with zero divisor",
+      "common_causes": [
+        "Modulo divisor can be zero",
+        "Missing range constraint on parameter",
+        "Variable divisor not checked"
+      ],
+      "symptoms": [
+        "Runtime error",
+        "Undefined behavior",
+        "Signal processing stops"
+      ],
+      "diagnosis_steps": [
+        "Check modulo divisor range",
+        "Verify parameter minimum value",
+        "Test with zero modulo"
+      ],
+      "solutions": [
+        {
+          "approach": "Add safe modulo wrapper",
+          "code_before": "process = _ % _;",
+          "code_after": "safe_mod(x,y) = select2(y==0, 0, x%y);\nprocess = safe_mod;",
+          "explanation": "Return 0 if modulo divisor is zero"
+        },
+        {
+          "approach": "Constrain divisor parameter",
+          "code_before": "div = hslider(\"divisor\", 2, 0, 10, 1);",
+          "code_after": "div = hslider(\"divisor\", 2, 1, 10, 1);",
+          "explanation": "Set minimum to 1 to avoid zero modulo"
+        },
+        {
+          "approach": "Use max to ensure non-zero",
+          "code_before": "process = _ % divisor;",
+          "code_after": "process = _ % max(1, divisor);",
+          "explanation": "Ensure divisor is at least 1"
+        }
+      ],
+      "related_errors": ["type-division-by-zero"],
+      "severity": "error",
+      "beginner_friendly": true
+    },
+    {
+      "error_id": "type-int-float-mismatch",
+      "pattern": ".*type mismatch.*int.*float.*|.*expected.*int.*got.*float.*",
+      "description": "Type mismatch between integer and float",
+      "common_causes": [
+        "Function expects integer, got float",
+        "Array index is float instead of int",
+        "Implicit conversion not allowed"
+      ],
+      "symptoms": [
+        "Compilation error",
+        "Type checking fails",
+        "Function won't accept argument"
+      ],
+      "diagnosis_steps": [
+        "Check function signature requirements",
+        "Verify argument types match parameters",
+        "Look for float where int expected"
+      ],
+      "solutions": [
+        {
+          "approach": "Convert float to int",
+          "code_before": "process = rdtable(size, table, index);",
+          "code_after": "process = rdtable(size, table, int(index));",
+          "explanation": "Cast float index to int for table lookup"
+        },
+        {
+          "approach": "Use integer literal",
+          "code_before": "process = fi.lowpass(3.0, 1000);",
+          "code_after": "process = fi.lowpass(3, 1000);",
+          "explanation": "Filter order should be integer, not float"
+        },
+        {
+          "approach": "Floor or round as appropriate",
+          "code_before": "idx = freq / step;",
+          "code_after": "idx = int(freq / step);",
+          "explanation": "Convert calculation result to int for indexing"
+        }
+      ],
+      "related_errors": ["type-parameter-type-error"],
+      "severity": "error",
+      "beginner_friendly": false
+    },
+    {
+      "error_id": "type-table-index-bounds",
+      "pattern": ".*index out of bounds.*|.*table.*range.*",
+      "description": "Table or array index out of valid range",
+      "common_causes": [
+        "Index exceeds table size",
+        "Negative index used",
+        "Index calculation incorrect"
+      ],
+      "symptoms": [
+        "Runtime error",
+        "Undefined table values",
+        "Signal corruption"
+      ],
+      "diagnosis_steps": [
+        "Check index range vs table size",
+        "Verify index is always non-negative",
+        "Test with boundary values"
+      ],
+      "solutions": [
+        {
+          "approach": "Wrap index with modulo",
+          "code_before": "process = rdtable(size, table, index);",
+          "code_after": "process = rdtable(size, table, int(index) % size);",
+          "explanation": "Wrap index to valid range [0, size-1]"
+        },
+        {
+          "approach": "Clamp index to bounds",
+          "code_before": "lookup(i) = rdtable(N, tbl, i);",
+          "code_after": "lookup(i) = rdtable(N, tbl, max(0, min(N-1, int(i))));",
+          "explanation": "Clamp index to [0, N-1] range"
+        },
+        {
+          "approach": "Fix table size to match usage",
+          "code_before": "tbl = (10, 20, 30);\nprocess = rdtable(2, tbl, idx);",
+          "code_after": "tbl = (10, 20, 30);\nprocess = rdtable(3, tbl, idx);",
+          "explanation": "Table size should match number of elements"
+        }
+      ],
+      "related_errors": ["type-int-float-mismatch"],
+      "severity": "error",
+      "beginner_friendly": false
+    },
+    {
+      "error_id": "type-nan-output",
+      "pattern": ".*NaN.*output.*|.*not a number.*",
+      "description": "Signal produces NaN (Not a Number) values",
+      "common_causes": [
+        "Domain violation in math function",
+        "0/0 division",
+        "sqrt of negative",
+        "log of zero or negative",
+        "Propagated NaN from earlier stage"
+      ],
+      "symptoms": [
+        "Output is NaN",
+        "Signal processing breaks",
+        "Audio becomes silent or corrupted"
+      ],
+      "diagnosis_steps": [
+        "Trace signal path to find NaN source",
+        "Check math function domains",
+        "Test each processing stage",
+        "Look for division by zero"
+      ],
+      "solutions": [
+        {
+          "approach": "Add domain safety to math functions",
+          "code_before": "process = sqrt : log;",
+          "code_after": "safe_sqrt(x) = sqrt(max(0, x));\nsafe_log(x) = log(max(1e-10, x));\nprocess = safe_sqrt : safe_log;",
+          "explanation": "Ensure all math operations stay in valid domains"
+        },
+        {
+          "approach": "Check for and replace NaN",
+          "code_before": "process = complex_calculation;",
+          "code_after": "isnan(x) = (x != x);\nreplace_nan(x) = select2(isnan(x), x, 0);\nprocess = complex_calculation : replace_nan;",
+          "explanation": "Detect NaN and replace with safe value"
+        },
+        {
+          "approach": "Add signal validation",
+          "code_before": "process = chain_of_operations;",
+          "code_after": "validate(x) = select2(x==x, x, 0);\nprocess = chain_of_operations : validate;",
+          "explanation": "Validate signal is not NaN (x==x is false for NaN)"
+        }
+      ],
+      "related_errors": ["type-domain-violation-sqrt", "type-domain-violation-log", "type-division-by-zero"],
+      "severity": "error",
+      "beginner_friendly": false
+    }
+  ],
+  "metadata": {
+    "total_patterns": 8,
+    "last_updated": "2025-12-11",
+    "coverage": "type system and mathematical domain errors"
+  }
+}

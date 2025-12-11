@@ -1,0 +1,48 @@
+# Faust MCP - Focus on DSP Language Integration, Exclude Multi-Agent Framework
+
+# Multi-agent system files (not part of Faust MCP core)
+.planning/
+.agent-state/
+watchdog/
+scripts/
+
+# Manifest and orchestration (multi-agent system)
+manifest.json
+lana-state.json
+*.pre-launch
+
+# IDE and system files
+.DS_Store
+.vscode/
+*.swp
+*.swo
+*~
+.env
+.env.local
+
+# Node modules (if any local deps)
+node_modules/
+npm-debug.log
+
+# Compilation artifacts
+*.out
+*.o
+*.so
+*.dylib
+
+# Faust build artifacts (keep only docs and examples)
+build/
+dist/
+
+# Temporary files
+*.tmp
+*.bak
+*.log
+
+# Keep these directories (Faust-specific)
+!docs/
+!examples/
+!src/
+!README.md
+!package.json
+!LICENSE

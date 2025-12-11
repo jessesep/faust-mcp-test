@@ -1,0 +1,380 @@
+{
+  "version": "1.0",
+  "category": "signal",
+  "description": "Faust signal processing and DSP-specific errors",
+  "patterns": [
+    {
+      "error_id": "signal-causality-violation",
+      "pattern": ".*causality.*|.*zero-delay feedback.*not allowed.*|.*delay-free loop.*",
+      "description": "Zero-delay feedback loop violates causality",
+      "common_causes": [
+        "Recursive composition without delay",
+        "Feedback path with no @() delay operator",
+        "Circular dependency without implicit delay"
+      ],
+      "symptoms": [
+        "Compilation error about causality",
+        "Zero-delay feedback loop error",
+        "Recursive definition fails"
+      ],
+      "diagnosis_steps": [
+        "Identify feedback loops in code",
+        "Check if recursive ~ operator has delay",
+        "Verify all feedback paths include delay"
+      ],
+      "solutions": [
+        {
+          "approach": "Add unit delay with mem",
+          "code_before": "process = + ~ _;",
+          "code_after": "process = + ~ mem;",
+          "explanation": "mem adds one-sample delay for causality"
+        },
+        {
+          "approach": "Use explicit delay operator",
+          "code_before": "feedback = _ ~ (*);",
+          "code_after": "feedback = _ ~ (@(1) : (*));",
+          "explanation": "@(1) adds explicit one-sample delay"
+        },
+        {
+          "approach": "Add delay in feedback function",
+          "code_before": "fbgain(g) = + ~ *(g);\nprocess = fbgain(0.5);",
+          "code_after": "fbgain(g) = + ~ (*(g) : mem);\nprocess = fbgain(0.5);",
+          "explanation": "Insert delay in feedback path before multiplication"
+        },
+        {
+          "approach": "Use letrec for complex recursion",
+          "code_before": "process = x\nwith {\n  x = y + input;\n  y = x * 0.5;\n};",
+          "code_after": "process = x\nwith {\n  x = y + input;\n  y = x' * 0.5;\n};\n// x' is delayed version (mem)",
+          "explanation": "Use tick notation (') for implicit delay in with block"
+        }
+      ],
+      "related_errors": ["signal-unbounded-recursion"],
+      "severity": "error",
+      "beginner_friendly": false
+    },
+    {
+      "error_id": "signal-unbounded-recursion",
+      "pattern": ".*recursive.*unbounded.*|.*infinite.*recursion.*|.*stack overflow.*",
+      "description": "Recursive definition without base case or termination",
+      "common_causes": [
+        "Missing delay in recursive definition",
+        "No termination condition",
+        "Infinite pattern matching loop"
+      ],
+      "symptoms": [
+        "Compilation hangs or fails",
+        "Stack overflow error",
+        "Compiler reports unbounded recursion"
+      ],
+      "diagnosis_steps": [
+        "Check recursive definitions for delays",
+        "Verify base case exists",
+        "Look for circular references"
+      ],
+      "solutions": [
+        {
+          "approach": "Add delay to break recursion",
+          "code_before": "fbloop = _ : + ~ _;",
+          "code_after": "fbloop = _ : + ~ mem;",
+          "explanation": "mem breaks infinite recursion with delay"
+        },
+        {
+          "approach": "Use pattern with base case",
+          "code_before": "factorial(n) = n * factorial(n-1);",
+          "code_after": "factorial(0) = 1;\nfactorial(n) = n * factorial(n-1);",
+          "explanation": "Add base case to terminate recursion (note: runtime recursion not recommended)"
+        },
+        {
+          "approach": "Break circular dependency",
+          "code_before": "x = y;\ny = x;",
+          "code_after": "x = y';\ny = x';",
+          "explanation": "Use delays (') to break zero-delay circular dependency"
+        }
+      ],
+      "related_errors": ["signal-causality-violation"],
+      "severity": "error",
+      "beginner_friendly": false
+    },
+    {
+      "error_id": "signal-delay-size-invalid",
+      "pattern": ".*delay.*size.*invalid.*|.*delay.*length.*negative.*|.*@.*invalid.*",
+      "description": "Invalid delay size (negative or non-constant)",
+      "common_causes": [
+        "Negative delay length",
+        "Delay size not compile-time constant",
+        "Variable delay without bounds"
+      ],
+      "symptoms": [
+        "Compilation error on @ operator",
+        "Invalid delay size message",
+        "Delay line allocation fails"
+      ],
+      "diagnosis_steps": [
+        "Check delay size is positive",
+        "Verify delay is constant at compile time",
+        "For variable delays, check ma.fdelay usage"
+      ],
+      "solutions": [
+        {
+          "approach": "Use positive constant delay",
+          "code_before": "process = @(-1);",
+          "code_after": "process = @(1);",
+          "explanation": "Delay length must be positive integer"
+        },
+        {
+          "approach": "Make delay compile-time constant",
+          "code_before": "delaylen = hslider(\"delay\", 1000, 0, 10000, 1);\nprocess = @(delaylen);",
+          "code_after": "delaylen = 1000; // compile-time constant\nprocess = @(delaylen);",
+          "explanation": "@ operator requires constant size known at compile time"
+        },
+        {
+          "approach": "Use variable delay from standard library",
+          "code_before": "delaylen = hslider(\"delay\", 1000, 0, 10000, 1);\nprocess = @(delaylen);",
+          "code_after": "import(\"stdfaust.lib\");\ndelaylen = hslider(\"delay\", 1000, 0, 10000, 1);\nmaxdel = 10000;\nprocess = de.fdelay(maxdel, delaylen);",
+          "explanation": "Use de.fdelay for variable delays with maximum size"
+        },
+        {
+          "approach": "Ensure integer delay value",
+          "code_before": "process = @(1.5);",
+          "code_after": "process = @(1);",
+          "explanation": "Delay samples must be integer, not float"
+        }
+      ],
+      "related_errors": ["type-int-float-mismatch"],
+      "severity": "error",
+      "beginner_friendly": false
+    },
+    {
+      "error_id": "signal-feedback-gain-unstable",
+      "pattern": ".*unstable.*feedback.*|.*oscillation.*runaway.*",
+      "description": "Feedback loop with gain >= 1 causing instability",
+      "common_causes": [
+        "Feedback gain not < 1",
+        "No attenuation in feedback path",
+        "Filter feedback coefficient > 1"
+      ],
+      "symptoms": [
+        "Signal grows to infinity",
+        "Runaway oscillation",
+        "Output saturates or clips"
+      ],
+      "diagnosis_steps": [
+        "Check feedback path gain is < 1",
+        "Verify filter stability",
+        "Test with conservative gain values"
+      ],
+      "solutions": [
+        {
+          "approach": "Reduce feedback gain below 1",
+          "code_before": "fbgain = hslider(\"feedback\", 0.5, 0, 2, 0.01);\nprocess = + ~ (mem : *(fbgain));",
+          "code_after": "fbgain = hslider(\"feedback\", 0.5, 0, 0.99, 0.01);\nprocess = + ~ (mem : *(fbgain));",
+          "explanation": "Limit feedback gain to < 1 for stability"
+        },
+        {
+          "approach": "Add attenuation to feedback path",
+          "code_before": "process = + ~ (fi.lowpass(1, 1000));",
+          "code_after": "process = + ~ (fi.lowpass(1, 1000) : *(0.9));",
+          "explanation": "Attenuate feedback to ensure stability"
+        },
+        {
+          "approach": "Use tanh to soft-limit feedback",
+          "code_before": "process = + ~ (mem : *(0.95));",
+          "code_after": "process = + ~ (mem : *(0.95) : tanh);",
+          "explanation": "Soft limiting prevents runaway in feedback"
+        },
+        {
+          "approach": "Design stable filter",
+          "code_before": "// Custom filter with unstable coefficients\nprocess = _ : + ~ (mem : *(1.5));",
+          "code_after": "// Use stable standard library filter\nimport(\"stdfaust.lib\");\nprocess = fi.pole(0.95);",
+          "explanation": "Use proven stable filter designs from library"
+        }
+      ],
+      "related_errors": ["signal-causality-violation"],
+      "severity": "warning",
+      "beginner_friendly": false
+    },
+    {
+      "error_id": "signal-dc-offset-accumulation",
+      "pattern": ".*DC offset.*|.*bias.*accumulation.*",
+      "description": "DC offset builds up in feedback loop",
+      "common_causes": [
+        "Integrator without DC blocking",
+        "Feedback adds constant offset",
+        "No high-pass filtering"
+      ],
+      "symptoms": [
+        "Signal slowly drifts",
+        "Output has DC bias",
+        "Audio pops or clicks"
+      ],
+      "diagnosis_steps": [
+        "Check for integrator-like feedback",
+        "Verify DC blocking filter present",
+        "Monitor signal DC component"
+      ],
+      "solutions": [
+        {
+          "approach": "Add DC blocking filter",
+          "code_before": "integrator = + ~ mem;\nprocess = integrator;",
+          "code_after": "import(\"stdfaust.lib\");\nintegrator = + ~ mem;\nprocess = integrator : fi.dcblocker;",
+          "explanation": "DC blocker removes accumulated offset"
+        },
+        {
+          "approach": "Use leaky integrator",
+          "code_before": "process = + ~ mem;",
+          "code_after": "leak = 0.9999; // slightly less than 1\nprocess = + ~ (mem : *(leak));",
+          "explanation": "Leaky integrator prevents DC accumulation"
+        },
+        {
+          "approach": "High-pass filter feedback path",
+          "code_before": "fbloop = + ~ (mem : *(0.9));",
+          "code_after": "import(\"stdfaust.lib\");\nfbloop = + ~ (mem : *(0.9) : fi.highpass(1, 20));",
+          "explanation": "High-pass filter removes DC from feedback"
+        }
+      ],
+      "related_errors": ["signal-feedback-gain-unstable"],
+      "severity": "warning",
+      "beginner_friendly": false
+    },
+    {
+      "error_id": "signal-sample-rate-dependency",
+      "pattern": ".*sample rate.*dependent.*|.*sr.*not constant.*",
+      "description": "Code depends on specific sample rate",
+      "common_causes": [
+        "Hard-coded delay samples instead of time",
+        "Filter coefficients not normalized to sr",
+        "Time calculations assume 48kHz"
+      ],
+      "symptoms": [
+        "Different behavior at different sample rates",
+        "Timing incorrect when sr changes",
+        "Filters have wrong cutoff"
+      ],
+      "diagnosis_steps": [
+        "Check if sample rate symbol (ma.SR) is used",
+        "Verify time-based calculations",
+        "Test at different sample rates"
+      ],
+      "solutions": [
+        {
+          "approach": "Convert time to samples using SR",
+          "code_before": "delaysamples = 48000; // assumes 48kHz\nprocess = @(delaysamples);",
+          "code_after": "import(\"stdfaust.lib\");\ndelaytime_sec = 1.0;\ndelaysamples = int(delaytime_sec * ma.SR);\nprocess = @(delaysamples);",
+          "explanation": "Calculate samples from time using ma.SR"
+        },
+        {
+          "approach": "Use frequency ratios not absolute",
+          "code_before": "// Hard-coded for 48kHz\nprocess = fi.lowpass(3, 1000);",
+          "code_after": "import(\"stdfaust.lib\");\n// Frequency is automatically normalized\nprocess = fi.lowpass(3, 1000);",
+          "explanation": "Standard library filters handle sr normalization"
+        },
+        {
+          "approach": "Define time-based parameters correctly",
+          "code_before": "attack_samples = 100;\nprocess = an.amp_follower(attack_samples);",
+          "code_after": "import(\"stdfaust.lib\");\nattack_time = 0.01; // 10ms\nprocess = an.amp_follower_ar(attack_time, attack_time);",
+          "explanation": "Use time-based parameters that adapt to sample rate"
+        }
+      ],
+      "related_errors": ["signal-delay-size-invalid"],
+      "severity": "warning",
+      "beginner_friendly": false
+    },
+    {
+      "error_id": "signal-amplitude-overflow",
+      "pattern": ".*amplitude.*overflow.*|.*clipping.*|.*saturation.*",
+      "description": "Signal amplitude exceeds expected range",
+      "common_causes": [
+        "Gain too high",
+        "Multiple signals summed without attenuation",
+        "Filter resonance causes peaks"
+      ],
+      "symptoms": [
+        "Audio distortion",
+        "Hard clipping",
+        "Signal saturates at max value"
+      ],
+      "diagnosis_steps": [
+        "Check gain staging throughout signal path",
+        "Verify summed signals are attenuated",
+        "Monitor peak signal levels"
+      ],
+      "solutions": [
+        {
+          "approach": "Normalize sum of signals",
+          "code_before": "process = sig1, sig2 :> _;",
+          "code_after": "process = sig1, sig2 :> /(2);",
+          "explanation": "Divide by number of summed signals"
+        },
+        {
+          "approach": "Add output limiter",
+          "code_before": "process = chain_of_processing;",
+          "code_after": "import(\"stdfaust.lib\");\nprocess = chain_of_processing : co.limiter_1176_R4_mono;",
+          "explanation": "Limiter prevents clipping at output"
+        },
+        {
+          "approach": "Use soft clipping",
+          "code_before": "process = high_gain_signal;",
+          "code_after": "softclip(x) = tanh(x);\nprocess = high_gain_signal : softclip;",
+          "explanation": "tanh provides smooth saturation instead of hard clip"
+        },
+        {
+          "approach": "Reduce filter resonance",
+          "code_before": "Q = hslider(\"Q\", 10, 0.1, 100, 0.1);\nprocess = ve.moog_vcf(0.95, freq, Q);",
+          "code_after": "Q = hslider(\"Q\", 3, 0.1, 10, 0.1);\nprocess = ve.moog_vcf(0.95, freq, Q);",
+          "explanation": "Limit Q factor to prevent resonance peaks"
+        }
+      ],
+      "related_errors": ["type-domain-violation-asin-acos"],
+      "severity": "warning",
+      "beginner_friendly": true
+    },
+    {
+      "error_id": "signal-denormal-slowdown",
+      "pattern": ".*denormal.*|.*subnormal.*performance.*",
+      "description": "Denormal numbers causing CPU slowdown",
+      "common_causes": [
+        "Reverb or delay tails approach zero",
+        "Feedback loops decay to near-zero",
+        "No denormal prevention"
+      ],
+      "symptoms": [
+        "CPU usage spikes unexpectedly",
+        "Performance degrades over time",
+        "Slowdown when signal is quiet"
+      ],
+      "diagnosis_steps": [
+        "Check if issue occurs during silence",
+        "Monitor CPU usage over time",
+        "Test with denormal prevention"
+      ],
+      "solutions": [
+        {
+          "approach": "Add small noise to prevent denormals",
+          "code_before": "process = reverb;",
+          "code_after": "denormal_prevention = *(0) : +(1e-20);\nprocess = reverb <: _, denormal_prevention : +;",
+          "explanation": "Tiny constant prevents denormal numbers"
+        },
+        {
+          "approach": "Use library denormal protection",
+          "code_before": "process = long_reverb;",
+          "code_after": "import(\"stdfaust.lib\");\nprocess = long_reverb : de.primepower;",
+          "explanation": "Standard library provides denormal protection"
+        },
+        {
+          "approach": "Gate quiet signals to zero",
+          "code_before": "decay = + ~ (mem : *(0.9999));",
+          "code_after": "threshold = 1e-6;\ngate(x) = select2(abs(x) < threshold, x, 0);\ndecay = + ~ (mem : *(0.9999) : gate);",
+          "explanation": "Zero out very quiet signals to prevent denormals"
+        }
+      ],
+      "related_errors": ["signal-feedback-gain-unstable"],
+      "severity": "warning",
+      "beginner_friendly": false
+    }
+  ],
+  "metadata": {
+    "total_patterns": 8,
+    "last_updated": "2025-12-11",
+    "coverage": "signal processing and DSP-specific errors"
+  }
+}

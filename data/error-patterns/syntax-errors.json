@@ -1,0 +1,398 @@
+{
+  "version": "1.0",
+  "category": "syntax",
+  "description": "Faust syntax and parsing errors",
+  "patterns": [
+    {
+      "error_id": "syntax-missing-semicolon",
+      "pattern": ".*expected.*';'.*|.*missing semicolon.*",
+      "description": "Missing semicolon at end of definition",
+      "common_causes": [
+        "Forgot semicolon after process definition",
+        "Missing semicolon after composition expression",
+        "Incomplete statement"
+      ],
+      "symptoms": [
+        "Compiler reports 'expected ;'",
+        "Parser fails on next line",
+        "Unexpected token errors"
+      ],
+      "diagnosis_steps": [
+        "Check if previous line ends with semicolon",
+        "Verify all process definitions are terminated",
+        "Look for incomplete expressions"
+      ],
+      "solutions": [
+        {
+          "approach": "Add missing semicolon",
+          "code_before": "process = osc(440)",
+          "code_after": "process = osc(440);",
+          "explanation": "All Faust definitions must end with semicolon"
+        },
+        {
+          "approach": "Complete the expression",
+          "code_before": "freq = hslider(\"Frequency\", 440, 20, 20000\nprocess = osc(freq);",
+          "code_after": "freq = hslider(\"Frequency\", 440, 20, 20000, 1);\nprocess = osc(freq);",
+          "explanation": "Missing closing parenthesis AND semicolon"
+        }
+      ],
+      "related_errors": ["syntax-incomplete-expression"],
+      "severity": "error",
+      "beginner_friendly": true
+    },
+    {
+      "error_id": "syntax-undefined-symbol",
+      "pattern": ".*undefined.*symbol.*|.*'[^']+' is undefined.*",
+      "description": "Reference to undefined variable or function",
+      "common_causes": [
+        "Typo in function or variable name",
+        "Missing library import",
+        "Function called before definition",
+        "Wrong scope"
+      ],
+      "symptoms": [
+        "Compiler reports 'undefined symbol'",
+        "Reference to non-existent function",
+        "Missing standard library function"
+      ],
+      "diagnosis_steps": [
+        "Check spelling of symbol name",
+        "Verify library is imported (import(\"stdfaust.lib\");)",
+        "Check if symbol is defined earlier in file",
+        "Verify symbol is in correct scope"
+      ],
+      "solutions": [
+        {
+          "approach": "Import required library",
+          "code_before": "process = osc(440);",
+          "code_after": "import(\"stdfaust.lib\");\nprocess = os.osc(440);",
+          "explanation": "Standard library must be imported to use os.osc"
+        },
+        {
+          "approach": "Fix typo in symbol name",
+          "code_before": "freq = 440;\nprocess = osc(feq);",
+          "code_after": "freq = 440;\nprocess = osc(freq);",
+          "explanation": "Variable name was misspelled as 'feq' instead of 'freq'"
+        },
+        {
+          "approach": "Define symbol before use",
+          "code_before": "process = myfilter;\nmyfilter = fi.lowpass(3, 1000);",
+          "code_after": "myfilter = fi.lowpass(3, 1000);\nprocess = myfilter;",
+          "explanation": "Define myfilter before using it in process"
+        }
+      ],
+      "related_errors": ["syntax-missing-import"],
+      "severity": "error",
+      "beginner_friendly": true
+    },
+    {
+      "error_id": "syntax-malformed-operator",
+      "pattern": ".*malformed.*operator.*|.*invalid operator syntax.*",
+      "description": "Incorrect syntax for Faust operators",
+      "common_causes": [
+        "Wrong split (<:) or merge (:>) syntax",
+        "Incorrect recursive (~) operator usage",
+        "Malformed parallel (,) or sequential (:) composition"
+      ],
+      "symptoms": [
+        "Parser error on composition operators",
+        "Unexpected token in expression",
+        "Operator doesn't behave as expected"
+      ],
+      "diagnosis_steps": [
+        "Review operator precedence rules",
+        "Check operator arity (inputs/outputs)",
+        "Verify parentheses for grouping"
+      ],
+      "solutions": [
+        {
+          "approach": "Correct split operator syntax",
+          "code_before": "process = _ <: *;",
+          "code_after": "process = _ <: (_,_) : *;",
+          "explanation": "Split needs to specify what to do with both outputs"
+        },
+        {
+          "approach": "Fix merge operator",
+          "code_before": "process = (_,_) :> _;",
+          "code_after": "process = (_,_) :> _;",
+          "explanation": "Merge operator syntax is actually correct - check input signals"
+        },
+        {
+          "approach": "Add parentheses for clarity",
+          "code_before": "process = _ : + ~ _ : _;",
+          "code_after": "process = (+ ~ _);",
+          "explanation": "Use parentheses to clarify recursive composition"
+        }
+      ],
+      "related_errors": ["composition-io-mismatch"],
+      "severity": "error",
+      "beginner_friendly": false
+    },
+    {
+      "error_id": "syntax-unary-negation",
+      "pattern": ".*unary negation.*not supported.*",
+      "description": "Direct unary minus (-x) not allowed in Faust",
+      "common_causes": [
+        "Using -variable directly",
+        "Negating expression without multiplication"
+      ],
+      "symptoms": [
+        "Error on unary minus operator",
+        "Expression fails to compile"
+      ],
+      "diagnosis_steps": [
+        "Find all unary minus usages",
+        "Convert to multiplication by -1 or subtraction from 0"
+      ],
+      "solutions": [
+        {
+          "approach": "Use multiplication by -1",
+          "code_before": "process = -freq;",
+          "code_after": "process = freq * -1;",
+          "explanation": "Multiply by -1 instead of using unary minus"
+        },
+        {
+          "approach": "Use subtraction from 0",
+          "code_before": "inverted = -input;",
+          "code_after": "inverted = 0 - input;",
+          "explanation": "Subtract from 0 to achieve negation"
+        }
+      ],
+      "related_errors": [],
+      "severity": "error",
+      "beginner_friendly": true
+    },
+    {
+      "error_id": "syntax-missing-process",
+      "pattern": ".*process.*not defined.*|.*no process definition.*",
+      "description": "Missing process declaration in Faust file",
+      "common_causes": [
+        "Forgot to declare process",
+        "Typo in 'process' keyword",
+        "Process defined in wrong scope"
+      ],
+      "symptoms": [
+        "Compiler can't find entry point",
+        "No audio output generated",
+        "Compilation fails"
+      ],
+      "diagnosis_steps": [
+        "Search file for 'process ='",
+        "Verify process is at file scope (not nested)",
+        "Check spelling of 'process'"
+      ],
+      "solutions": [
+        {
+          "approach": "Add process definition",
+          "code_before": "import(\"stdfaust.lib\");\nfreq = 440;\nosc(f) = os.osc(f);",
+          "code_after": "import(\"stdfaust.lib\");\nfreq = 440;\nosc(f) = os.osc(f);\nprocess = osc(freq);",
+          "explanation": "Every Faust program needs a process definition"
+        },
+        {
+          "approach": "Fix typo in process keyword",
+          "code_before": "proces = os.osc(440);",
+          "code_after": "process = os.osc(440);",
+          "explanation": "Correct spelling is 'process' not 'proces'"
+        }
+      ],
+      "related_errors": ["syntax-undefined-symbol"],
+      "severity": "error",
+      "beginner_friendly": true
+    },
+    {
+      "error_id": "syntax-invalid-identifier",
+      "pattern": ".*invalid identifier.*|.*illegal character.*",
+      "description": "Invalid characters or reserved words in identifiers",
+      "common_causes": [
+        "Using reserved Faust keywords",
+        "Special characters in variable names",
+        "Starting variable with number"
+      ],
+      "symptoms": [
+        "Parser rejects variable name",
+        "Unexpected character error",
+        "Syntax error on valid-looking code"
+      ],
+      "diagnosis_steps": [
+        "Check for reserved keywords",
+        "Verify identifier starts with letter or underscore",
+        "Remove special characters except underscore"
+      ],
+      "solutions": [
+        {
+          "approach": "Avoid reserved keywords",
+          "code_before": "import = 440;",
+          "code_after": "basefreq = 440;",
+          "explanation": "'import' is a reserved keyword, use different name"
+        },
+        {
+          "approach": "Fix identifier starting with number",
+          "code_before": "440freq = hslider(...);",
+          "code_after": "freq440 = hslider(...);",
+          "explanation": "Identifiers must start with letter or underscore"
+        },
+        {
+          "approach": "Remove special characters",
+          "code_before": "my-freq = 440;",
+          "code_after": "my_freq = 440;",
+          "explanation": "Use underscore instead of hyphen in identifiers"
+        }
+      ],
+      "related_errors": [],
+      "severity": "error",
+      "beginner_friendly": true
+    },
+    {
+      "error_id": "syntax-unclosed-parenthesis",
+      "pattern": ".*expected.*'\\)'.*|.*unclosed.*parenthesis.*",
+      "description": "Missing closing parenthesis in expression",
+      "common_causes": [
+        "Forgot closing paren in function call",
+        "Nested parentheses not balanced",
+        "Multi-line expression missing close"
+      ],
+      "symptoms": [
+        "Parser expects ')' but finds something else",
+        "Expression continues past intended end",
+        "Error on seemingly unrelated line"
+      ],
+      "diagnosis_steps": [
+        "Count opening vs closing parentheses",
+        "Use editor's bracket matching",
+        "Check multi-line expressions carefully"
+      ],
+      "solutions": [
+        {
+          "approach": "Add missing closing paren",
+          "code_before": "process = os.osc(440 * 2;",
+          "code_after": "process = os.osc(440 * 2);",
+          "explanation": "Close the parenthesis before semicolon"
+        },
+        {
+          "approach": "Balance nested parentheses",
+          "code_before": "process = ((440 + 220) * 2;",
+          "code_after": "process = ((440 + 220) * 2);",
+          "explanation": "Each opening paren needs matching closing paren"
+        }
+      ],
+      "related_errors": ["syntax-missing-semicolon"],
+      "severity": "error",
+      "beginner_friendly": true
+    },
+    {
+      "error_id": "syntax-incomplete-expression",
+      "pattern": ".*incomplete expression.*|.*unexpected end.*",
+      "description": "Expression is incomplete or cut off",
+      "common_causes": [
+        "Operator missing right operand",
+        "Function call missing arguments",
+        "Expression ends prematurely"
+      ],
+      "symptoms": [
+        "Parser expects more tokens",
+        "Unexpected end of file",
+        "Hanging operator"
+      ],
+      "diagnosis_steps": [
+        "Check if all operators have operands",
+        "Verify function calls have all required args",
+        "Look for partial expressions"
+      ],
+      "solutions": [
+        {
+          "approach": "Complete binary operation",
+          "code_before": "process = 440 +;",
+          "code_after": "process = 440 + 220;",
+          "explanation": "Binary operators need both left and right operands"
+        },
+        {
+          "approach": "Add missing function arguments",
+          "code_before": "process = fi.lowpass(3);",
+          "code_after": "process = fi.lowpass(3, 1000);",
+          "explanation": "fi.lowpass requires order and cutoff frequency"
+        }
+      ],
+      "related_errors": ["syntax-missing-semicolon"],
+      "severity": "error",
+      "beginner_friendly": true
+    },
+    {
+      "error_id": "syntax-comment-not-closed",
+      "pattern": ".*unterminated comment.*|.*comment not closed.*",
+      "description": "Multi-line comment missing closing */",
+      "common_causes": [
+        "Forgot */ at end of comment block",
+        "Nested comments causing issues"
+      ],
+      "symptoms": [
+        "Code after comment is ignored",
+        "Unexpected end of file in comment",
+        "Process definition seems missing"
+      ],
+      "diagnosis_steps": [
+        "Find all /* without matching */",
+        "Check if code is accidentally commented out",
+        "Look for nested comment attempts"
+      ],
+      "solutions": [
+        {
+          "approach": "Close comment block",
+          "code_before": "/* This is a comment\nprocess = os.osc(440);",
+          "code_after": "/* This is a comment */\nprocess = os.osc(440);",
+          "explanation": "Multi-line comments need */ to close"
+        },
+        {
+          "approach": "Use single-line comments instead",
+          "code_before": "/* Comment 1\n/* Comment 2 */\nprocess = os.osc(440);",
+          "code_after": "// Comment 1\n// Comment 2\nprocess = os.osc(440);",
+          "explanation": "Comments don't nest in Faust, use // for multiple lines"
+        }
+      ],
+      "related_errors": [],
+      "severity": "error",
+      "beginner_friendly": true
+    },
+    {
+      "error_id": "syntax-invalid-numeric-literal",
+      "pattern": ".*invalid numeric literal.*|.*malformed number.*",
+      "description": "Incorrectly formatted number",
+      "common_causes": [
+        "Multiple decimal points",
+        "Invalid scientific notation",
+        "Non-numeric characters in number"
+      ],
+      "symptoms": [
+        "Parser rejects number",
+        "Unexpected character in number",
+        "Type error with numeric value"
+      ],
+      "diagnosis_steps": [
+        "Check number format",
+        "Verify decimal point usage",
+        "Check scientific notation syntax"
+      ],
+      "solutions": [
+        {
+          "approach": "Fix multiple decimal points",
+          "code_before": "freq = 440.0.5;",
+          "code_after": "freq = 440.5;",
+          "explanation": "Numbers can only have one decimal point"
+        },
+        {
+          "approach": "Correct scientific notation",
+          "code_before": "gain = 1e2.5;",
+          "code_after": "gain = 1e2;",
+          "explanation": "Exponent in scientific notation must be integer"
+        }
+      ],
+      "related_errors": [],
+      "severity": "error",
+      "beginner_friendly": true
+    }
+  ],
+  "metadata": {
+    "total_patterns": 10,
+    "last_updated": "2025-12-11",
+    "coverage": "common syntax errors"
+  }
+}

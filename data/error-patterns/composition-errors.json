@@ -1,0 +1,290 @@
+{
+  "version": "1.0",
+  "category": "composition",
+  "description": "Faust box composition and connection errors",
+  "patterns": [
+    {
+      "error_id": "composition-io-mismatch",
+      "pattern": ".*dimension.*mismatch.*|.*inputs.*outputs.*don't match.*|.*incompatible.*arity.*",
+      "description": "Box inputs/outputs don't match in composition",
+      "common_causes": [
+        "Sequential : composition with mismatched I/O",
+        "Split <: doesn't match consumer inputs",
+        "Merge :> has wrong number of inputs",
+        "Parallel , creates unexpected channel count"
+      ],
+      "symptoms": [
+        "Compilation error about dimensions",
+        "Box algebra type error",
+        "Inputs/outputs mismatch message"
+      ],
+      "diagnosis_steps": [
+        "Count inputs and outputs of each box",
+        "Trace signal flow through composition",
+        "Check operator arity requirements",
+        "Use --debug flag to see box dimensions"
+      ],
+      "solutions": [
+        {
+          "approach": "Match sequential composition I/O",
+          "code_before": "// osc has 0 inputs, 1 output\n// * needs 2 inputs\nprocess = os.osc(440) : *;",
+          "code_after": "// Split osc output to two channels for *\nprocess = os.osc(440) <: *;",
+          "explanation": "Use <: to split single output to two inputs for multiplication"
+        },
+        {
+          "approach": "Fix parallel composition channels",
+          "code_before": "// Creates 2 outputs, but * needs 2 inputs correctly paired\nprocess = (os.osc(440), os.osc(880)) : *;",
+          "code_after": "// Route parallel outputs to single multiplication\nprocess = (os.osc(440), os.osc(880)) :> *;",
+          "explanation": "Use :> merge or proper routing for parallel outputs"
+        },
+        {
+          "approach": "Add routing to match dimensions",
+          "code_before": "// 1 output to 3-input function\nprocess = _ : fi.highpass3(1000);",
+          "code_after": "// fi.highpass3 needs (order, freq, input)\nprocess = _ : fi.highpass(3, 1000);",
+          "explanation": "Use correct function signature - fi.highpass takes (order, freq) params + signal"
+        },
+        {
+          "approach": "Use explicit routing",
+          "code_before": "process = sig1, sig2, sig3 : effect;",
+          "code_after": "// Assuming effect takes 2 inputs\nprocess = sig1, sig2, sig3 : (_, _ :> _), _ : effect;",
+          "explanation": "Explicitly route signals to match effect input requirements"
+        }
+      ],
+      "related_errors": ["syntax-malformed-operator"],
+      "severity": "error",
+      "beginner_friendly": false
+    },
+    {
+      "error_id": "composition-split-routing-error",
+      "pattern": ".*split.*routing.*|.*<:.*dimension.*",
+      "description": "Split operator <: used incorrectly",
+      "common_causes": [
+        "Split without specifying what to do with outputs",
+        "Wrong number of split outputs",
+        "Confusion about implicit vs explicit split"
+      ],
+      "symptoms": [
+        "Unexpected number of outputs",
+        "Routing doesn't work as expected",
+        "Dimension error after split"
+      ],
+      "diagnosis_steps": [
+        "Count how many outputs split creates",
+        "Check what follows split in chain",
+        "Verify split fan-out matches needs"
+      ],
+      "solutions": [
+        {
+          "approach": "Explicit split routing",
+          "code_before": "process = _ <: *;",
+          "code_after": "process = _ <: (_, _) : *;",
+          "explanation": "Explicitly route both split outputs to multiplication"
+        },
+        {
+          "approach": "Split to multiple consumers",
+          "code_before": "process = sig <: fi.lowpass(3, 1000), fi.highpass(3, 1000);",
+          "code_after": "process = sig <: (fi.lowpass(3, 1000), fi.highpass(3, 1000));",
+          "explanation": "Use parentheses to group parallel consumers after split"
+        },
+        {
+          "approach": "Split with different fan-out",
+          "code_before": "// Need 3 copies of signal\nprocess = _ <: (_, _) : func;",
+          "code_after": "// Use route for custom routing\nprocess = _ <: (_, _, _) : func;",
+          "explanation": "Specify correct number of split outputs"
+        },
+        {
+          "approach": "Understand implicit operations",
+          "code_before": "// Trying to multiply signal by itself\nprocess = _ <: *;",
+          "code_after": "// Explicit split and routing\nprocess = _ <: (_, _) : *;",
+          "explanation": "Make split routing explicit for clarity"
+        }
+      ],
+      "related_errors": ["composition-io-mismatch", "composition-merge-routing-error"],
+      "severity": "error",
+      "beginner_friendly": false
+    },
+    {
+      "error_id": "composition-merge-routing-error",
+      "pattern": ".*merge.*routing.*|.*:>.*dimension.*",
+      "description": "Merge operator :> used incorrectly",
+      "common_causes": [
+        "Merging wrong number of signals",
+        "Merge input count doesn't match sources",
+        "Confusion about sum vs mix"
+      ],
+      "symptoms": [
+        "Unexpected mono/stereo conversion",
+        "Signal mixing incorrect",
+        "Dimension mismatch at merge"
+      ],
+      "diagnosis_steps": [
+        "Count signals going into merge",
+        "Verify merge produces expected outputs",
+        "Check if sum or mix is intended"
+      ],
+      "solutions": [
+        {
+          "approach": "Merge multiple signals to mono",
+          "code_before": "process = (sig1, sig2, sig3) :> _;",
+          "code_after": "// Explicit: merge 3 signals to 1\nprocess = (sig1, sig2, sig3) :> _;",
+          "explanation": "Merge sums all inputs to single output"
+        },
+        {
+          "approach": "Merge stereo pairs",
+          "code_before": "// 4 signals to stereo\nprocess = (L1, R1, L2, R2) :> (_, _);",
+          "code_after": "// Explicitly pair channels\nprocess = (L1, L2 :> _, R1, R2 :> _);",
+          "explanation": "Merge pairs separately for stereo"
+        },
+        {
+          "approach": "Use parallel instead of merge",
+          "code_before": "// Want separate outputs, not sum\nprocess = (sig1, sig2) :> (_, _);",
+          "code_after": "// Keep parallel - no merge needed\nprocess = (sig1, sig2);",
+          "explanation": "Use parallel , not merge :> if you want separate signals"
+        },
+        {
+          "approach": "Scale merged signals",
+          "code_before": "// Merge may cause clipping\nprocess = (sig1, sig2, sig3, sig4) :> _;",
+          "code_after": "// Scale by number of inputs\nprocess = (sig1, sig2, sig3, sig4) :> /(4);",
+          "explanation": "Attenuate merged signals to prevent overflow"
+        }
+      ],
+      "related_errors": ["composition-io-mismatch", "signal-amplitude-overflow"],
+      "severity": "error",
+      "beginner_friendly": false
+    },
+    {
+      "error_id": "composition-recursive-no-delay",
+      "pattern": ".*recursive.*composition.*delay.*|.*~.*causality.*",
+      "description": "Recursive composition ~ without required delay",
+      "common_causes": [
+        "Feedback loop missing delay element",
+        "Implicit delay not created",
+        "Causality violation in ~ operator"
+      ],
+      "symptoms": [
+        "Zero-delay feedback error",
+        "Causality violation",
+        "Recursive composition fails"
+      ],
+      "diagnosis_steps": [
+        "Check feedback path has delay",
+        "Verify ~ operator has mem or @ in feedback",
+        "Look for delay-free loops"
+      ],
+      "solutions": [
+        {
+          "approach": "Add mem for unit delay",
+          "code_before": "process = + ~ _;",
+          "code_after": "process = + ~ mem;",
+          "explanation": "mem provides required one-sample delay"
+        },
+        {
+          "approach": "Use explicit delay",
+          "code_before": "process = input : + ~ (*)(0.9);",
+          "code_after": "process = input : + ~ (mem : *(0.9));",
+          "explanation": "Add mem in feedback path before gain"
+        },
+        {
+          "approach": "Delay in feedback function",
+          "code_before": "fbfunc = fi.lowpass(3, 1000);\nprocess = + ~ fbfunc;",
+          "code_after": "fbfunc = fi.lowpass(3, 1000) : mem;\nprocess = + ~ fbfunc;",
+          "explanation": "Ensure feedback function includes delay"
+        }
+      ],
+      "related_errors": ["signal-causality-violation"],
+      "severity": "error",
+      "beginner_friendly": false
+    },
+    {
+      "error_id": "composition-operator-precedence",
+      "pattern": ".*precedence.*|.*unexpected.*composition.*",
+      "description": "Operator precedence causes unexpected composition",
+      "common_causes": [
+        "Not understanding : < , ~ < <: < :> precedence",
+        "Missing parentheses for grouping",
+        "Composition associates wrong way"
+      ],
+      "symptoms": [
+        "Signal flow not as intended",
+        "Unexpected operator association",
+        "Logical composition doesn't match code"
+      ],
+      "diagnosis_steps": [
+        "Review operator precedence rules",
+        "Add parentheses to clarify intent",
+        "Use --debug to see parsed structure"
+      ],
+      "solutions": [
+        {
+          "approach": "Use parentheses for clarity",
+          "code_before": "process = sig : fi.lowpass(3, 1000) : *(0.5), sig2;",
+          "code_after": "process = (sig : fi.lowpass(3, 1000) : *(0.5)), sig2;",
+          "explanation": "Parentheses make parallel composition explicit"
+        },
+        {
+          "approach": "Group recursive composition",
+          "code_before": "process = input : + ~ mem : *(0.5);",
+          "code_after": "process = input : (+ ~ mem) : *(0.5);",
+          "explanation": "Group recursive part before applying gain"
+        },
+        {
+          "approach": "Clarify split/merge precedence",
+          "code_before": "process = sig <: fi.lowpass(3, 1000) :> _;",
+          "code_after": "process = sig <: (fi.lowpass(3, 1000), fi.lowpass(3, 1000)) :> _;",
+          "explanation": "Explicitly show what split feeds and what merge combines"
+        }
+      ],
+      "related_errors": ["composition-io-mismatch"],
+      "severity": "warning",
+      "beginner_friendly": false
+    },
+    {
+      "error_id": "composition-parallel-channel-confusion",
+      "pattern": ".*parallel.*channel.*|.*unexpected.*stereo.*mono.*",
+      "description": "Confusion about parallel composition channel count",
+      "common_causes": [
+        "Not tracking channel count through chain",
+        "Expecting mono but getting stereo",
+        "Parallel , creates more channels than expected"
+      ],
+      "symptoms": [
+        "Wrong number of channels at output",
+        "Stereo when mono expected (or vice versa)",
+        "Extra channels created"
+      ],
+      "diagnosis_steps": [
+        "Count channels at each stage",
+        "Trace parallel composition carefully",
+        "Use --debug to show channel counts"
+      ],
+      "solutions": [
+        {
+          "approach": "Convert stereo to mono explicitly",
+          "code_before": "// effect outputs stereo, but need mono\nprocess = input : stereo_effect;",
+          "code_after": "// Merge stereo to mono\nprocess = input : stereo_effect :> _;",
+          "explanation": "Use :> to sum stereo to mono"
+        },
+        {
+          "approach": "Maintain channel count through chain",
+          "code_before": "// Parallel creates 3 channels\nprocess = (sig1, sig2, sig3) : effect;",
+          "code_after": "// Merge to mono first if effect expects mono\nprocess = (sig1, sig2, sig3) :> _ : effect;",
+          "explanation": "Reduce channels before mono effect"
+        },
+        {
+          "approach": "Route channels explicitly",
+          "code_before": "// Unclear routing\nprocess = (L, R) : (effect1, effect2);",
+          "code_after": "// Explicit: each effect processes one channel\nprocess = (L : effect1, R : effect2);",
+          "explanation": "Make parallel routing per-channel explicit"
+        }
+      ],
+      "related_errors": ["composition-io-mismatch"],
+      "severity": "warning",
+      "beginner_friendly": true
+    }
+  ],
+  "metadata": {
+    "total_patterns": 6,
+    "last_updated": "2025-12-11",
+    "coverage": "box composition, routing, and algebra errors"
+  }
+}

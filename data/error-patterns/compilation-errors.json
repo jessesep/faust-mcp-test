@@ -1,0 +1,280 @@
+{
+  "version": "1.0",
+  "category": "compilation",
+  "description": "Faust backend compilation and target-specific errors",
+  "patterns": [
+    {
+      "error_id": "compilation-missing-architecture",
+      "pattern": ".*architecture.*not found.*|.*-a.*file.*missing.*",
+      "description": "Architecture file missing or not found",
+      "common_causes": [
+        "Wrong architecture file path",
+        "Architecture not installed",
+        "Typo in -a flag argument"
+      ],
+      "symptoms": [
+        "Can't find architecture file",
+        "Compilation fails immediately",
+        "Missing .h file error"
+      ],
+      "diagnosis_steps": [
+        "Check architecture file exists",
+        "Verify FAUST architecture path",
+        "Check spelling of architecture name"
+      ],
+      "solutions": [
+        {
+          "approach": "Use correct architecture path",
+          "code_before": "faust -a myarch.cpp file.dsp",
+          "code_after": "faust -a /usr/share/faust/architectures/myarch.cpp file.dsp",
+          "explanation": "Provide full path to architecture file"
+        },
+        {
+          "approach": "Use standard architecture",
+          "code_before": "faust -a custom.cpp file.dsp",
+          "code_after": "faust -a jack-gtk.cpp file.dsp",
+          "explanation": "Use built-in architecture that comes with Faust"
+        },
+        {
+          "approach": "Check Faust installation",
+          "code_before": "# Missing architecture files",
+          "code_after": "# Reinstall or locate architecture files\nfaust --archfile\n# Lists available architectures",
+          "explanation": "Verify Faust installation includes architecture files"
+        }
+      ],
+      "related_errors": [],
+      "severity": "error",
+      "beginner_friendly": true
+    },
+    {
+      "error_id": "compilation-backend-unsupported-feature",
+      "pattern": ".*backend.*not support.*|.*unsupported.*target.*|.*WASM.*limitation.*",
+      "description": "Feature not supported by compilation backend",
+      "common_causes": [
+        "Using soundfile in WASM",
+        "Using certain math functions in embedded targets",
+        "Backend-specific limitations"
+      ],
+      "symptoms": [
+        "Backend reports unsupported feature",
+        "Compilation succeeds but runtime fails",
+        "Missing function in generated code"
+      ],
+      "diagnosis_steps": [
+        "Check backend documentation for limitations",
+        "Try different backend",
+        "Look for alternative implementation"
+      ],
+      "solutions": [
+        {
+          "approach": "Avoid soundfile in WASM",
+          "code_before": "// Using soundfile in WASM\nimport(\"stdfaust.lib\");\nprocess = so.sound(\"sample.wav\");",
+          "code_after": "// Use waveform table instead\nimport(\"stdfaust.lib\");\n// Pre-load samples at compile time or use oscillators",
+          "explanation": "WASM doesn't support runtime file loading"
+        },
+        {
+          "approach": "Use backend-compatible functions",
+          "code_before": "// Some math functions not in embedded\nprocess = lgamma(input);",
+          "code_after": "// Use basic math functions\nprocess = log(gamma_approx(input));",
+          "explanation": "Use functions available in target backend"
+        },
+        {
+          "approach": "Choose appropriate backend",
+          "code_before": "faust2wasm file.dsp  # for feature needing OS",
+          "code_after": "faust2jaqt file.dsp  # desktop app with full features",
+          "explanation": "Select backend that supports needed features"
+        }
+      ],
+      "related_errors": [],
+      "severity": "error",
+      "beginner_friendly": false
+    },
+    {
+      "error_id": "compilation-cpp-compile-error",
+      "pattern": ".*error:.*C\\+\\+.*|.*undefined reference.*|.*linker error.*",
+      "description": "C++ compilation or linking fails",
+      "common_causes": [
+        "Generated C++ has errors",
+        "Missing libraries",
+        "Incompatible C++ standard",
+        "Linker can't find dependencies"
+      ],
+      "symptoms": [
+        "C++ compiler errors",
+        "Undefined symbols",
+        "Linking fails"
+      ],
+      "diagnosis_steps": [
+        "Check generated C++ code",
+        "Verify all dependencies installed",
+        "Check compiler version and flags"
+      ],
+      "solutions": [
+        {
+          "approach": "Install missing dependencies",
+          "code_before": "# Jack library not found",
+          "code_after": "# On Ubuntu/Debian:\nsudo apt-get install libjack-dev\n# On macOS:\nbrew install jack",
+          "explanation": "Install required audio libraries"
+        },
+        {
+          "approach": "Use correct C++ standard",
+          "code_before": "g++ -std=c++98 generated.cpp",
+          "code_after": "g++ -std=c++11 generated.cpp",
+          "explanation": "Faust-generated code may need C++11 or later"
+        },
+        {
+          "approach": "Add missing linker flags",
+          "code_before": "g++ generated.cpp -o program",
+          "code_after": "g++ generated.cpp -o program -ljack -lpthread",
+          "explanation": "Link required libraries explicitly"
+        }
+      ],
+      "related_errors": [],
+      "severity": "error",
+      "beginner_friendly": true
+    },
+    {
+      "error_id": "compilation-library-import-failed",
+      "pattern": ".*import.*failed.*|.*library.*not found.*|.*can't open.*\\.lib",
+      "description": "Failed to import Faust library",
+      "common_causes": [
+        "Library file not in search path",
+        "Typo in library name",
+        "FAUST_LIB_PATH not set",
+        "Library doesn't exist"
+      ],
+      "symptoms": [
+        "Can't find .lib file",
+        "Import statement fails",
+        "Library symbols undefined"
+      ],
+      "diagnosis_steps": [
+        "Check library file exists",
+        "Verify FAUST_LIB_PATH includes library directory",
+        "Check library name spelling"
+      ],
+      "solutions": [
+        {
+          "approach": "Set FAUST_LIB_PATH",
+          "code_before": "# Library not found\nimport(\"mylib.lib\");",
+          "code_after": "# Set environment variable\nexport FAUST_LIB_PATH=/path/to/libraries:$FAUST_LIB_PATH\n# Or use -I flag\nfaust -I /path/to/libraries file.dsp",
+          "explanation": "Tell Faust where to find custom libraries"
+        },
+        {
+          "approach": "Use standard library correctly",
+          "code_before": "import(\"standard.lib\");",
+          "code_after": "import(\"stdfaust.lib\");",
+          "explanation": "Use correct standard library name"
+        },
+        {
+          "approach": "Check library file location",
+          "code_before": "import(\"../libs/mylib.lib\");",
+          "code_after": "// Use absolute path or -I flag\nimport(\"mylib.lib\");\n// With: faust -I ../libs file.dsp",
+          "explanation": "Use -I flag for library paths instead of relative imports"
+        }
+      ],
+      "related_errors": ["syntax-undefined-symbol"],
+      "severity": "error",
+      "beginner_friendly": true
+    },
+    {
+      "error_id": "compilation-memory-exceeded",
+      "pattern": ".*memory.*exceeded.*|.*out of memory.*|.*allocation.*failed.*",
+      "description": "Compilation uses too much memory",
+      "common_causes": [
+        "Very large delay lines",
+        "Huge table sizes",
+        "Too many simultaneous voices",
+        "Unrolled loops too large"
+      ],
+      "symptoms": [
+        "Compiler runs out of memory",
+        "Compilation very slow or hangs",
+        "System becomes unresponsive"
+      ],
+      "diagnosis_steps": [
+        "Check delay line sizes",
+        "Look for large tables",
+        "Check for exponential expansion",
+        "Profile memory usage"
+      ],
+      "solutions": [
+        {
+          "approach": "Reduce delay line size",
+          "code_before": "maxdelay = 48000 * 60; // 60 seconds at 48kHz\nprocess = de.delay(maxdelay, deltime);",
+          "code_after": "maxdelay = 48000 * 5; // 5 seconds max\nprocess = de.delay(maxdelay, deltime);",
+          "explanation": "Use smaller maximum delay to reduce memory"
+        },
+        {
+          "approach": "Reduce table size",
+          "code_before": "tablesize = 1000000;\ntable = ba.time % tablesize;",
+          "code_after": "tablesize = 8192; // More reasonable size\ntable = ba.time % tablesize;",
+          "explanation": "Use smaller tables when possible"
+        },
+        {
+          "approach": "Use par sparingly",
+          "code_before": "// Creates 100 parallel voices\nprocess = par(i, 100, voice(i));",
+          "code_after": "// Use fewer voices\nprocess = par(i, 8, voice(i));",
+          "explanation": "Reduce parallelism to lower memory usage"
+        },
+        {
+          "approach": "Optimize with compiler flags",
+          "code_before": "faust file.dsp",
+          "code_after": "faust -light file.dsp",
+          "explanation": "Use -light flag for less memory-intensive compilation"
+        }
+      ],
+      "related_errors": [],
+      "severity": "error",
+      "beginner_friendly": false
+    },
+    {
+      "error_id": "compilation-optimization-failed",
+      "pattern": ".*optimization.*failed.*|.*simplification.*error.*",
+      "description": "Faust optimizer encounters error",
+      "common_causes": [
+        "Complex expression breaks optimizer",
+        "Bug in optimization pass",
+        "Unusual code pattern"
+      ],
+      "symptoms": [
+        "Compilation fails during optimization",
+        "Error in simplification stage",
+        "Optimizer reports problem"
+      ],
+      "diagnosis_steps": [
+        "Try disabling optimizations",
+        "Simplify complex expressions",
+        "Check for unusual patterns"
+      ],
+      "solutions": [
+        {
+          "approach": "Disable optimization temporarily",
+          "code_before": "faust file.dsp",
+          "code_after": "faust -o0 file.dsp  # Disable optimization",
+          "explanation": "Turn off optimization to isolate issue"
+        },
+        {
+          "approach": "Simplify complex expression",
+          "code_before": "// Very complex nested expression\nprocess = ((((a + b) * c) / d) - e) % f;",
+          "code_after": "// Break into steps\ntemp1 = (a + b) * c;\ntemp2 = temp1 / d;\ntemp3 = temp2 - e;\nprocess = temp3 % f;",
+          "explanation": "Break complex expressions into simpler steps"
+        },
+        {
+          "approach": "Report optimizer bug",
+          "code_before": "# If still fails",
+          "code_after": "# Create minimal reproducer and report bug\n# Use -o0 as workaround",
+          "explanation": "May be Faust compiler bug - report to developers"
+        }
+      ],
+      "related_errors": [],
+      "severity": "error",
+      "beginner_friendly": false
+    }
+  ],
+  "metadata": {
+    "total_patterns": 6,
+    "last_updated": "2025-12-11",
+    "coverage": "backend compilation, architecture, and target-specific errors"
+  }
+}
