@@ -1,0 +1,1492 @@
+{
+  "testSuite": {
+    "basicSineOscillator": {
+      "name": "Basic Sine Oscillator (No Comments)",
+      "description": "Minimal sine wave without comments to test framework baseline",
+      "code": "\nimport(\"stdfaust.lib\");\nfreq = hslider(\"frequency\", 440, 20, 20000, 1);\ngain = hslider(\"amplitude\", 0.5, 0, 1, 0.01);\nprocess = os.osc(freq) * gain;\n    ",
+      "expectedStatus": "PASS",
+      "category": "basic_valid",
+      "notes": "No comments - should pass syntax validation"
+    },
+    "simpleLowpassFilter": {
+      "name": "Simple Lowpass Filter",
+      "description": "Basic lowpass filter with minimal code",
+      "code": "\nimport(\"stdfaust.lib\");\ncutoff = hslider(\"cutoff\", 1000, 20, 20000, 1);\nprocess = _ : fi.lowpass(4, cutoff);\n    ",
+      "expectedStatus": "PASS",
+      "category": "basic_valid"
+    },
+    "singleSliderDelay": {
+      "name": "Simple Delay Line",
+      "description": "Minimal delay effect",
+      "code": "\nimport(\"stdfaust.lib\");\ndt = hslider(\"delay_time\", 100, 1, 1000, 1);\nprocess = _ : @(dt);\n    ",
+      "expectedStatus": "PASS",
+      "category": "basic_valid"
+    },
+    "emptyCode": {
+      "name": "Empty Code",
+      "description": "Test handling of empty input",
+      "code": "",
+      "expectedStatus": "FAIL",
+      "category": "edge_case_empty",
+      "notes": "Should fail - missing process declaration"
+    },
+    "onlyComments": {
+      "name": "Only Comments",
+      "description": "Code with only comments, no process",
+      "code": "\n// This is just a comment\n// Another comment\n/* Block comment */\n    ",
+      "expectedStatus": "FAIL",
+      "category": "edge_case_empty",
+      "notes": "Should fail - missing process declaration"
+    },
+    "minimalProcess": {
+      "name": "Minimal Process",
+      "description": "Just process, nothing else",
+      "code": "process = _;",
+      "expectedStatus": "PASS",
+      "category": "edge_case_minimal"
+    },
+    "missingSemicolon": {
+      "name": "Missing Semicolon",
+      "description": "Definition without semicolon",
+      "code": "\nimport(\"stdfaust.lib\");\nfreq = hslider(\"frequency\", 440, 20, 20000, 1)\nprocess = os.osc(freq);\n    ",
+      "expectedStatus": "FAIL",
+      "category": "error_syntax",
+      "errorType": "missing_semicolon"
+    },
+    "undefinedSymbol": {
+      "name": "Undefined Symbol",
+      "description": "Using undefined function",
+      "code": "\nimport(\"stdfaust.lib\");\nprocess = os.undefined_function(440);\n    ",
+      "expectedStatus": "FAIL",
+      "category": "error_syntax",
+      "errorType": "undefined_symbol"
+    },
+    "unmatchedBracket": {
+      "name": "Unmatched Bracket",
+      "description": "Missing closing bracket",
+      "code": "\nimport(\"stdfaust.lib\");\nprocess = os.osc(440;\n    ",
+      "expectedStatus": "FAIL",
+      "category": "error_syntax",
+      "errorType": "unmatched_bracket"
+    },
+    "missingImport": {
+      "name": "Missing Import",
+      "description": "Using library function without import",
+      "code": "\nprocess = os.osc(440);\n    ",
+      "expectedStatus": "FAIL",
+      "category": "error_semantic",
+      "errorType": "missing_import"
+    },
+    "invalidSliderRange": {
+      "name": "Invalid Slider Range",
+      "description": "Slider default outside min-max range",
+      "code": "\nimport(\"stdfaust.lib\");\nfreq = hslider(\"frequency\", 50000, 20, 20000, 1);\nprocess = os.osc(freq);\n    ",
+      "expectedStatus": "FAIL",
+      "category": "error_semantic",
+      "errorType": "range_error"
+    },
+    "parallelFilters": {
+      "name": "Parallel Filters",
+      "description": "Signal split into parallel filter paths",
+      "code": "\nimport(\"stdfaust.lib\");\ncutoff = hslider(\"cutoff\", 1000, 20, 20000, 1);\nprocess = _ <: (fi.lowpass(4, cutoff), fi.highpass(3, cutoff)) :> _;\n    ",
+      "expectedStatus": "PASS",
+      "category": "complex_valid"
+    },
+    "cascadedFilters": {
+      "name": "Cascaded Filters",
+      "description": "Multiple filters in series",
+      "code": "\nimport(\"stdfaust.lib\");\nfreq1 = hslider(\"freq1\", 500, 20, 20000, 1);\nfreq2 = hslider(\"freq2\", 1000, 20, 20000, 1);\nprocess = fi.lowpass(3, freq1) : fi.highpass(2, freq2);\n    ",
+      "expectedStatus": "PASS",
+      "category": "complex_valid"
+    },
+    "mixerWithGain": {
+      "name": "Mixer with Gain",
+      "description": "Multi-input mixer with amplitude control",
+      "code": "\nimport(\"stdfaust.lib\");\ng1 = hslider(\"gain1\", 0.5, 0, 1, 0.01);\ng2 = hslider(\"gain2\", 0.5, 0, 1, 0.01);\nprocess = (_ * g1, _ * g2) :> _;\n    ",
+      "expectedStatus": "PASS",
+      "category": "complex_valid"
+    },
+    "feedbackLoop": {
+      "name": "Feedback Loop",
+      "description": "Recursive feedback system",
+      "code": "\nimport(\"stdfaust.lib\");\nfb_gain = hslider(\"feedback\", 0.3, 0, 0.9, 0.01);\nprocess = (_ + @(1000) * fb_gain) ~ _;\n    ",
+      "expectedStatus": "PASS",
+      "category": "complex_valid"
+    },
+    "multipleSliders": {
+      "name": "Multiple Sliders",
+      "description": "Multiple correctly-ranged sliders",
+      "code": "\nimport(\"stdfaust.lib\");\nfreq = hslider(\"frequency\", 440, 20, 20000, 1);\ncutoff = hslider(\"cutoff\", 5000, 50, 18000, 1);\nres = hslider(\"resonance\", 2, 0.5, 15, 0.1);\ngain = hslider(\"gain\", 0.5, 0, 1, 0.01);\nprocess = os.osc(freq) : fi.lowpass(res, cutoff) * gain;\n    ",
+      "expectedStatus": "PASS",
+      "category": "parameter_valid"
+    },
+    "buttonControl": {
+      "name": "Button Control",
+      "description": "Button input control",
+      "code": "\nimport(\"stdfaust.lib\");\nprocess = button(\"trigger\") * os.osc(440);\n    ",
+      "expectedStatus": "PASS",
+      "category": "parameter_valid"
+    },
+    "stereoProcessor": {
+      "name": "Stereo Processor",
+      "description": "Process stereo input independently",
+      "code": "\nimport(\"stdfaust.lib\");\ncutoff = hslider(\"cutoff\", 1000, 20, 20000, 1);\nprocess = fi.lowpass(4, cutoff), fi.highpass(3, cutoff);\n    ",
+      "expectedStatus": "PASS",
+      "category": "signal_flow"
+    },
+    "monoToStereoSplit": {
+      "name": "Mono to Stereo",
+      "description": "Split mono signal to stereo",
+      "code": "\nimport(\"stdfaust.lib\");\nprocess = _ <: _, _;\n    ",
+      "expectedStatus": "PASS",
+      "category": "signal_flow"
+    },
+    "stereoToMono": {
+      "name": "Stereo to Mono",
+      "description": "Mix stereo to mono",
+      "code": "\nimport(\"stdfaust.lib\");\nprocess = (_ + _) / 2;\n    ",
+      "expectedStatus": "PASS",
+      "category": "signal_flow"
+    },
+    "sqrtOfPositive": {
+      "name": "Square Root of Positive",
+      "description": "Valid mathematical domain operation",
+      "code": "\nimport(\"stdfaust.lib\");\nprocess = sqrt(0.5);\n    ",
+      "expectedStatus": "PASS",
+      "category": "math_domain"
+    },
+    "logOfPositive": {
+      "name": "Log of Positive",
+      "description": "Valid logarithm operation",
+      "code": "\nimport(\"stdfaust.lib\");\nfreq = hslider(\"frequency\", 440, 20, 20000, 1);\nprocess = log(freq);\n    ",
+      "expectedStatus": "PASS",
+      "category": "math_domain"
+    },
+    "envelopeFollower": {
+      "name": "Envelope Follower",
+      "description": "Extract envelope from signal",
+      "code": "\nimport(\"stdfaust.lib\");\nattack = hslider(\"attack\", 0.01, 0.001, 1, 0.001);\nrelease = hslider(\"release\", 0.1, 0.001, 1, 0.001);\nprocess = abs : si.smooth(attack, release);\n    ",
+      "expectedStatus": "PASS",
+      "category": "advanced_pattern"
+    },
+    "amplitudeModulation": {
+      "name": "Amplitude Modulation",
+      "description": "Modulate amplitude with LFO",
+      "code": "\nimport(\"stdfaust.lib\");\ncarrier_freq = hslider(\"carrier\", 440, 20, 20000, 1);\nlfo_freq = hslider(\"lfo\", 4, 0.1, 20, 0.1);\ndepth = hslider(\"depth\", 0.5, 0, 1, 0.01);\nprocess = os.osc(carrier_freq) * (1 - depth + depth * os.osc(lfo_freq));\n    ",
+      "expectedStatus": "PASS",
+      "category": "advanced_pattern"
+    },
+    "frequencyModulation": {
+      "name": "Frequency Modulation",
+      "description": "FM synthesis basic",
+      "code": "\nimport(\"stdfaust.lib\");\ncarrier = hslider(\"carrier\", 440, 20, 20000, 1);\nmodulator = hslider(\"modulator\", 220, 10, 1000, 1);\ndepth = hslider(\"index\", 100, 0, 1000, 1);\nprocess = os.osc(carrier + depth * os.osc(modulator));\n    ",
+      "expectedStatus": "PASS",
+      "category": "advanced_pattern"
+    }
+  },
+  "results": [
+    {
+      "name": "basicSineOscillator",
+      "category": "basic_valid",
+      "expectedStatus": "PASS",
+      "actualStatus": "FAIL",
+      "match": false,
+      "description": "Minimal sine wave without comments to test framework baseline",
+      "notes": "No comments - should pass syntax validation",
+      "result": {
+        "timestamp": "2025-12-11T22:13:06.977Z",
+        "code_length": 154,
+        "tests": {
+          "syntax": {
+            "valid": true,
+            "errors": [],
+            "warnings": [],
+            "summary": {
+              "totalErrors": 0,
+              "totalWarnings": 0,
+              "status": "VALID"
+            }
+          },
+          "compilation": {
+            "compilable": false,
+            "output": "/bin/sh: faust: command not found\n",
+            "errors": [],
+            "warnings": []
+          },
+          "signal_processing": {
+            "valid": true,
+            "issues": []
+          },
+          "parameters": {
+            "valid": true,
+            "issues": []
+          }
+        },
+        "summary": {
+          "overall_status": "FAIL",
+          "passed_tests": 3,
+          "failed_tests": 1,
+          "details": {
+            "syntax": "PASS - 0 warning(s)",
+            "compilation": "FAIL - 0 error(s)",
+            "signal_processing": "PASS - 0 warning(s)",
+            "parameters": "PASS"
+          }
+        }
+      }
+    },
+    {
+      "name": "simpleLowpassFilter",
+      "category": "basic_valid",
+      "expectedStatus": "PASS",
+      "actualStatus": "FAIL",
+      "match": false,
+      "description": "Basic lowpass filter with minimal code",
+      "result": {
+        "timestamp": "2025-12-11T22:13:06.984Z",
+        "code_length": 114,
+        "tests": {
+          "syntax": {
+            "valid": true,
+            "errors": [],
+            "warnings": [],
+            "summary": {
+              "totalErrors": 0,
+              "totalWarnings": 0,
+              "status": "VALID"
+            }
+          },
+          "compilation": {
+            "compilable": false,
+            "output": "/bin/sh: faust: command not found\n",
+            "errors": [],
+            "warnings": []
+          },
+          "signal_processing": {
+            "valid": true,
+            "issues": []
+          },
+          "parameters": {
+            "valid": true,
+            "issues": []
+          }
+        },
+        "summary": {
+          "overall_status": "FAIL",
+          "passed_tests": 3,
+          "failed_tests": 1,
+          "details": {
+            "syntax": "PASS - 0 warning(s)",
+            "compilation": "FAIL - 0 error(s)",
+            "signal_processing": "PASS - 0 warning(s)",
+            "parameters": "PASS"
+          }
+        }
+      }
+    },
+    {
+      "name": "singleSliderDelay",
+      "category": "basic_valid",
+      "expectedStatus": "PASS",
+      "actualStatus": "FAIL",
+      "match": false,
+      "description": "Minimal delay effect",
+      "result": {
+        "timestamp": "2025-12-11T22:13:06.988Z",
+        "code_length": 95,
+        "tests": {
+          "syntax": {
+            "valid": true,
+            "errors": [],
+            "warnings": [],
+            "summary": {
+              "totalErrors": 0,
+              "totalWarnings": 0,
+              "status": "VALID"
+            }
+          },
+          "compilation": {
+            "compilable": false,
+            "output": "/bin/sh: faust: command not found\n",
+            "errors": [],
+            "warnings": []
+          },
+          "signal_processing": {
+            "valid": true,
+            "issues": []
+          },
+          "parameters": {
+            "valid": true,
+            "issues": []
+          }
+        },
+        "summary": {
+          "overall_status": "FAIL",
+          "passed_tests": 3,
+          "failed_tests": 1,
+          "details": {
+            "syntax": "PASS - 0 warning(s)",
+            "compilation": "FAIL - 0 error(s)",
+            "signal_processing": "PASS - 0 warning(s)",
+            "parameters": "PASS"
+          }
+        }
+      }
+    },
+    {
+      "name": "emptyCode",
+      "category": "edge_case_empty",
+      "expectedStatus": "FAIL",
+      "actualStatus": "FAIL",
+      "match": true,
+      "description": "Test handling of empty input",
+      "notes": "Should fail - missing process declaration",
+      "result": {
+        "timestamp": "2025-12-11T22:13:06.992Z",
+        "code_length": 0,
+        "tests": {
+          "syntax": {
+            "valid": false,
+            "errors": [
+              {
+                "message": "Missing \"process\" declaration - required to define the main DSP algorithm"
+              }
+            ],
+            "warnings": [],
+            "summary": {
+              "totalErrors": 1,
+              "totalWarnings": 0,
+              "status": "INVALID"
+            }
+          },
+          "compilation": {
+            "compilable": false,
+            "skipped": true,
+            "reason": "Skipped due to syntax errors"
+          },
+          "signal_processing": {
+            "valid": true,
+            "issues": []
+          },
+          "parameters": {
+            "valid": true,
+            "issues": []
+          }
+        },
+        "summary": {
+          "overall_status": "FAIL",
+          "passed_tests": 2,
+          "failed_tests": 1,
+          "details": {
+            "syntax": "FAIL - 1 error(s)",
+            "compilation": "SKIPPED - Skipped due to syntax errors",
+            "signal_processing": "PASS - 0 warning(s)",
+            "parameters": "PASS"
+          }
+        }
+      }
+    },
+    {
+      "name": "onlyComments",
+      "category": "edge_case_empty",
+      "expectedStatus": "FAIL",
+      "actualStatus": "FAIL",
+      "match": true,
+      "description": "Code with only comments, no process",
+      "notes": "Should fail - missing process declaration",
+      "result": {
+        "timestamp": "2025-12-11T22:13:06.992Z",
+        "code_length": 70,
+        "tests": {
+          "syntax": {
+            "valid": false,
+            "errors": [
+              {
+                "message": "Missing \"process\" declaration - required to define the main DSP algorithm"
+              }
+            ],
+            "warnings": [],
+            "summary": {
+              "totalErrors": 1,
+              "totalWarnings": 0,
+              "status": "INVALID"
+            }
+          },
+          "compilation": {
+            "compilable": false,
+            "skipped": true,
+            "reason": "Skipped due to syntax errors"
+          },
+          "signal_processing": {
+            "valid": true,
+            "issues": []
+          },
+          "parameters": {
+            "valid": true,
+            "issues": []
+          }
+        },
+        "summary": {
+          "overall_status": "FAIL",
+          "passed_tests": 2,
+          "failed_tests": 1,
+          "details": {
+            "syntax": "FAIL - 1 error(s)",
+            "compilation": "SKIPPED - Skipped due to syntax errors",
+            "signal_processing": "PASS - 0 warning(s)",
+            "parameters": "PASS"
+          }
+        }
+      }
+    },
+    {
+      "name": "minimalProcess",
+      "category": "edge_case_minimal",
+      "expectedStatus": "PASS",
+      "actualStatus": "FAIL",
+      "match": false,
+      "description": "Just process, nothing else",
+      "result": {
+        "timestamp": "2025-12-11T22:13:06.992Z",
+        "code_length": 12,
+        "tests": {
+          "syntax": {
+            "valid": true,
+            "errors": [],
+            "warnings": [],
+            "summary": {
+              "totalErrors": 0,
+              "totalWarnings": 0,
+              "status": "VALID"
+            }
+          },
+          "compilation": {
+            "compilable": false,
+            "output": "/bin/sh: faust: command not found\n",
+            "errors": [],
+            "warnings": []
+          },
+          "signal_processing": {
+            "valid": true,
+            "issues": []
+          },
+          "parameters": {
+            "valid": true,
+            "issues": []
+          }
+        },
+        "summary": {
+          "overall_status": "FAIL",
+          "passed_tests": 3,
+          "failed_tests": 1,
+          "details": {
+            "syntax": "PASS - 0 warning(s)",
+            "compilation": "FAIL - 0 error(s)",
+            "signal_processing": "PASS - 0 warning(s)",
+            "parameters": "PASS"
+          }
+        }
+      }
+    },
+    {
+      "name": "missingSemicolon",
+      "category": "error_syntax",
+      "expectedStatus": "FAIL",
+      "actualStatus": "FAIL",
+      "match": true,
+      "description": "Definition without semicolon",
+      "result": {
+        "timestamp": "2025-12-11T22:13:06.996Z",
+        "code_length": 100,
+        "tests": {
+          "syntax": {
+            "valid": true,
+            "errors": [],
+            "warnings": [
+              {
+                "line": 3,
+                "message": "Potential missing semicolon before next identifier",
+                "code": "freq = hslider(\"frequency\", 440, 20, 20000, 1)"
+              }
+            ],
+            "summary": {
+              "totalErrors": 0,
+              "totalWarnings": 1,
+              "status": "VALID"
+            }
+          },
+          "compilation": {
+            "compilable": false,
+            "output": "/bin/sh: faust: command not found\n",
+            "errors": [],
+            "warnings": []
+          },
+          "signal_processing": {
+            "valid": true,
+            "issues": []
+          },
+          "parameters": {
+            "valid": true,
+            "issues": []
+          }
+        },
+        "summary": {
+          "overall_status": "FAIL",
+          "passed_tests": 3,
+          "failed_tests": 1,
+          "details": {
+            "syntax": "PASS - 1 warning(s)",
+            "compilation": "FAIL - 0 error(s)",
+            "signal_processing": "PASS - 0 warning(s)",
+            "parameters": "PASS"
+          }
+        }
+      }
+    },
+    {
+      "name": "undefinedSymbol",
+      "category": "error_syntax",
+      "expectedStatus": "FAIL",
+      "actualStatus": "FAIL",
+      "match": true,
+      "description": "Using undefined function",
+      "result": {
+        "timestamp": "2025-12-11T22:13:06.999Z",
+        "code_length": 67,
+        "tests": {
+          "syntax": {
+            "valid": true,
+            "errors": [],
+            "warnings": [],
+            "summary": {
+              "totalErrors": 0,
+              "totalWarnings": 0,
+              "status": "VALID"
+            }
+          },
+          "compilation": {
+            "compilable": false,
+            "output": "/bin/sh: faust: command not found\n",
+            "errors": [],
+            "warnings": []
+          },
+          "signal_processing": {
+            "valid": true,
+            "issues": []
+          },
+          "parameters": {
+            "valid": true,
+            "issues": []
+          }
+        },
+        "summary": {
+          "overall_status": "FAIL",
+          "passed_tests": 3,
+          "failed_tests": 1,
+          "details": {
+            "syntax": "PASS - 0 warning(s)",
+            "compilation": "FAIL - 0 error(s)",
+            "signal_processing": "PASS - 0 warning(s)",
+            "parameters": "PASS"
+          }
+        }
+      }
+    },
+    {
+      "name": "unmatchedBracket",
+      "category": "error_syntax",
+      "expectedStatus": "FAIL",
+      "actualStatus": "FAIL",
+      "match": true,
+      "description": "Missing closing bracket",
+      "result": {
+        "timestamp": "2025-12-11T22:13:07.003Z",
+        "code_length": 51,
+        "tests": {
+          "syntax": {
+            "valid": false,
+            "errors": [
+              {
+                "position": 41,
+                "message": "Unclosed '(' bracket"
+              }
+            ],
+            "warnings": [],
+            "summary": {
+              "totalErrors": 1,
+              "totalWarnings": 0,
+              "status": "INVALID"
+            }
+          },
+          "compilation": {
+            "compilable": false,
+            "skipped": true,
+            "reason": "Skipped due to syntax errors"
+          },
+          "signal_processing": {
+            "valid": true,
+            "issues": []
+          },
+          "parameters": {
+            "valid": true,
+            "issues": []
+          }
+        },
+        "summary": {
+          "overall_status": "FAIL",
+          "passed_tests": 2,
+          "failed_tests": 1,
+          "details": {
+            "syntax": "FAIL - 1 error(s)",
+            "compilation": "SKIPPED - Skipped due to syntax errors",
+            "signal_processing": "PASS - 0 warning(s)",
+            "parameters": "PASS"
+          }
+        }
+      }
+    },
+    {
+      "name": "missingImport",
+      "category": "error_semantic",
+      "expectedStatus": "FAIL",
+      "actualStatus": "FAIL",
+      "match": true,
+      "description": "Using library function without import",
+      "result": {
+        "timestamp": "2025-12-11T22:13:07.003Z",
+        "code_length": 28,
+        "tests": {
+          "syntax": {
+            "valid": true,
+            "errors": [],
+            "warnings": [],
+            "summary": {
+              "totalErrors": 0,
+              "totalWarnings": 0,
+              "status": "VALID"
+            }
+          },
+          "compilation": {
+            "compilable": false,
+            "output": "/bin/sh: faust: command not found\n",
+            "errors": [],
+            "warnings": []
+          },
+          "signal_processing": {
+            "valid": true,
+            "issues": []
+          },
+          "parameters": {
+            "valid": true,
+            "issues": []
+          }
+        },
+        "summary": {
+          "overall_status": "FAIL",
+          "passed_tests": 3,
+          "failed_tests": 1,
+          "details": {
+            "syntax": "PASS - 0 warning(s)",
+            "compilation": "FAIL - 0 error(s)",
+            "signal_processing": "PASS - 0 warning(s)",
+            "parameters": "PASS"
+          }
+        }
+      }
+    },
+    {
+      "name": "invalidSliderRange",
+      "category": "error_semantic",
+      "expectedStatus": "FAIL",
+      "actualStatus": "FAIL",
+      "match": true,
+      "description": "Slider default outside min-max range",
+      "result": {
+        "timestamp": "2025-12-11T22:13:07.006Z",
+        "code_length": 103,
+        "tests": {
+          "syntax": {
+            "valid": true,
+            "errors": [],
+            "warnings": [],
+            "summary": {
+              "totalErrors": 0,
+              "totalWarnings": 0,
+              "status": "VALID"
+            }
+          },
+          "compilation": {
+            "compilable": false,
+            "output": "/bin/sh: faust: command not found\n",
+            "errors": [],
+            "warnings": []
+          },
+          "signal_processing": {
+            "valid": true,
+            "issues": []
+          },
+          "parameters": {
+            "valid": false,
+            "issues": [
+              {
+                "type": "RANGE_ERROR",
+                "parameter": "frequency",
+                "message": "Slider 'frequency' default value 50000 outside range [20, 20000]",
+                "severity": "error"
+              }
+            ]
+          }
+        },
+        "summary": {
+          "overall_status": "FAIL",
+          "passed_tests": 2,
+          "failed_tests": 2,
+          "details": {
+            "syntax": "PASS - 0 warning(s)",
+            "compilation": "FAIL - 0 error(s)",
+            "signal_processing": "PASS - 0 warning(s)",
+            "parameters": "FAIL - 1 error(s)"
+          }
+        }
+      }
+    },
+    {
+      "name": "parallelFilters",
+      "category": "complex_valid",
+      "expectedStatus": "PASS",
+      "actualStatus": "FAIL",
+      "match": false,
+      "description": "Signal split into parallel filter paths",
+      "result": {
+        "timestamp": "2025-12-11T22:13:07.010Z",
+        "code_length": 146,
+        "tests": {
+          "syntax": {
+            "valid": true,
+            "errors": [],
+            "warnings": [],
+            "summary": {
+              "totalErrors": 0,
+              "totalWarnings": 0,
+              "status": "VALID"
+            }
+          },
+          "compilation": {
+            "compilable": false,
+            "output": "/bin/sh: faust: command not found\n",
+            "errors": [],
+            "warnings": []
+          },
+          "signal_processing": {
+            "valid": true,
+            "issues": []
+          },
+          "parameters": {
+            "valid": true,
+            "issues": []
+          }
+        },
+        "summary": {
+          "overall_status": "FAIL",
+          "passed_tests": 3,
+          "failed_tests": 1,
+          "details": {
+            "syntax": "PASS - 0 warning(s)",
+            "compilation": "FAIL - 0 error(s)",
+            "signal_processing": "PASS - 0 warning(s)",
+            "parameters": "PASS"
+          }
+        }
+      }
+    },
+    {
+      "name": "cascadedFilters",
+      "category": "complex_valid",
+      "expectedStatus": "PASS",
+      "actualStatus": "FAIL",
+      "match": false,
+      "description": "Multiple filters in series",
+      "result": {
+        "timestamp": "2025-12-11T22:13:07.014Z",
+        "code_length": 176,
+        "tests": {
+          "syntax": {
+            "valid": true,
+            "errors": [],
+            "warnings": [],
+            "summary": {
+              "totalErrors": 0,
+              "totalWarnings": 0,
+              "status": "VALID"
+            }
+          },
+          "compilation": {
+            "compilable": false,
+            "output": "/bin/sh: faust: command not found\n",
+            "errors": [],
+            "warnings": []
+          },
+          "signal_processing": {
+            "valid": true,
+            "issues": []
+          },
+          "parameters": {
+            "valid": true,
+            "issues": []
+          }
+        },
+        "summary": {
+          "overall_status": "FAIL",
+          "passed_tests": 3,
+          "failed_tests": 1,
+          "details": {
+            "syntax": "PASS - 0 warning(s)",
+            "compilation": "FAIL - 0 error(s)",
+            "signal_processing": "PASS - 0 warning(s)",
+            "parameters": "PASS"
+          }
+        }
+      }
+    },
+    {
+      "name": "mixerWithGain",
+      "category": "complex_valid",
+      "expectedStatus": "PASS",
+      "actualStatus": "FAIL",
+      "match": false,
+      "description": "Multi-input mixer with amplitude control",
+      "result": {
+        "timestamp": "2025-12-11T22:13:07.018Z",
+        "code_length": 142,
+        "tests": {
+          "syntax": {
+            "valid": true,
+            "errors": [],
+            "warnings": [],
+            "summary": {
+              "totalErrors": 0,
+              "totalWarnings": 0,
+              "status": "VALID"
+            }
+          },
+          "compilation": {
+            "compilable": false,
+            "output": "/bin/sh: faust: command not found\n",
+            "errors": [],
+            "warnings": []
+          },
+          "signal_processing": {
+            "valid": true,
+            "issues": []
+          },
+          "parameters": {
+            "valid": true,
+            "issues": []
+          }
+        },
+        "summary": {
+          "overall_status": "FAIL",
+          "passed_tests": 3,
+          "failed_tests": 1,
+          "details": {
+            "syntax": "PASS - 0 warning(s)",
+            "compilation": "FAIL - 0 error(s)",
+            "signal_processing": "PASS - 0 warning(s)",
+            "parameters": "PASS"
+          }
+        }
+      }
+    },
+    {
+      "name": "feedbackLoop",
+      "category": "complex_valid",
+      "expectedStatus": "PASS",
+      "actualStatus": "FAIL",
+      "match": false,
+      "description": "Recursive feedback system",
+      "result": {
+        "timestamp": "2025-12-11T22:13:07.022Z",
+        "code_length": 118,
+        "tests": {
+          "syntax": {
+            "valid": true,
+            "errors": [],
+            "warnings": [],
+            "summary": {
+              "totalErrors": 0,
+              "totalWarnings": 0,
+              "status": "VALID"
+            }
+          },
+          "compilation": {
+            "compilable": false,
+            "output": "/bin/sh: faust: command not found\n",
+            "errors": [],
+            "warnings": []
+          },
+          "signal_processing": {
+            "valid": true,
+            "issues": []
+          },
+          "parameters": {
+            "valid": true,
+            "issues": []
+          }
+        },
+        "summary": {
+          "overall_status": "FAIL",
+          "passed_tests": 3,
+          "failed_tests": 1,
+          "details": {
+            "syntax": "PASS - 0 warning(s)",
+            "compilation": "FAIL - 0 error(s)",
+            "signal_processing": "PASS - 0 warning(s)",
+            "parameters": "PASS"
+          }
+        }
+      }
+    },
+    {
+      "name": "multipleSliders",
+      "category": "parameter_valid",
+      "expectedStatus": "PASS",
+      "actualStatus": "FAIL",
+      "match": false,
+      "description": "Multiple correctly-ranged sliders",
+      "result": {
+        "timestamp": "2025-12-11T22:13:07.025Z",
+        "code_length": 268,
+        "tests": {
+          "syntax": {
+            "valid": true,
+            "errors": [],
+            "warnings": [],
+            "summary": {
+              "totalErrors": 0,
+              "totalWarnings": 0,
+              "status": "VALID"
+            }
+          },
+          "compilation": {
+            "compilable": false,
+            "output": "/bin/sh: faust: command not found\n",
+            "errors": [],
+            "warnings": []
+          },
+          "signal_processing": {
+            "valid": true,
+            "issues": []
+          },
+          "parameters": {
+            "valid": true,
+            "issues": []
+          }
+        },
+        "summary": {
+          "overall_status": "FAIL",
+          "passed_tests": 3,
+          "failed_tests": 1,
+          "details": {
+            "syntax": "PASS - 0 warning(s)",
+            "compilation": "FAIL - 0 error(s)",
+            "signal_processing": "PASS - 0 warning(s)",
+            "parameters": "PASS"
+          }
+        }
+      }
+    },
+    {
+      "name": "buttonControl",
+      "category": "parameter_valid",
+      "expectedStatus": "PASS",
+      "actualStatus": "FAIL",
+      "match": false,
+      "description": "Button input control",
+      "result": {
+        "timestamp": "2025-12-11T22:13:07.029Z",
+        "code_length": 72,
+        "tests": {
+          "syntax": {
+            "valid": true,
+            "errors": [],
+            "warnings": [],
+            "summary": {
+              "totalErrors": 0,
+              "totalWarnings": 0,
+              "status": "VALID"
+            }
+          },
+          "compilation": {
+            "compilable": false,
+            "output": "/bin/sh: faust: command not found\n",
+            "errors": [],
+            "warnings": []
+          },
+          "signal_processing": {
+            "valid": true,
+            "issues": []
+          },
+          "parameters": {
+            "valid": true,
+            "issues": []
+          }
+        },
+        "summary": {
+          "overall_status": "FAIL",
+          "passed_tests": 3,
+          "failed_tests": 1,
+          "details": {
+            "syntax": "PASS - 0 warning(s)",
+            "compilation": "FAIL - 0 error(s)",
+            "signal_processing": "PASS - 0 warning(s)",
+            "parameters": "PASS"
+          }
+        }
+      }
+    },
+    {
+      "name": "stereoProcessor",
+      "category": "signal_flow",
+      "expectedStatus": "PASS",
+      "actualStatus": "FAIL",
+      "match": false,
+      "description": "Process stereo input independently",
+      "result": {
+        "timestamp": "2025-12-11T22:13:07.033Z",
+        "code_length": 134,
+        "tests": {
+          "syntax": {
+            "valid": true,
+            "errors": [],
+            "warnings": [],
+            "summary": {
+              "totalErrors": 0,
+              "totalWarnings": 0,
+              "status": "VALID"
+            }
+          },
+          "compilation": {
+            "compilable": false,
+            "output": "/bin/sh: faust: command not found\n",
+            "errors": [],
+            "warnings": []
+          },
+          "signal_processing": {
+            "valid": true,
+            "issues": []
+          },
+          "parameters": {
+            "valid": true,
+            "issues": []
+          }
+        },
+        "summary": {
+          "overall_status": "FAIL",
+          "passed_tests": 3,
+          "failed_tests": 1,
+          "details": {
+            "syntax": "PASS - 0 warning(s)",
+            "compilation": "FAIL - 0 error(s)",
+            "signal_processing": "PASS - 0 warning(s)",
+            "parameters": "PASS"
+          }
+        }
+      }
+    },
+    {
+      "name": "monoToStereoSplit",
+      "category": "signal_flow",
+      "expectedStatus": "PASS",
+      "actualStatus": "FAIL",
+      "match": false,
+      "description": "Split mono signal to stereo",
+      "result": {
+        "timestamp": "2025-12-11T22:13:07.036Z",
+        "code_length": 50,
+        "tests": {
+          "syntax": {
+            "valid": true,
+            "errors": [],
+            "warnings": [],
+            "summary": {
+              "totalErrors": 0,
+              "totalWarnings": 0,
+              "status": "VALID"
+            }
+          },
+          "compilation": {
+            "compilable": false,
+            "output": "/bin/sh: faust: command not found\n",
+            "errors": [],
+            "warnings": []
+          },
+          "signal_processing": {
+            "valid": true,
+            "issues": []
+          },
+          "parameters": {
+            "valid": true,
+            "issues": []
+          }
+        },
+        "summary": {
+          "overall_status": "FAIL",
+          "passed_tests": 3,
+          "failed_tests": 1,
+          "details": {
+            "syntax": "PASS - 0 warning(s)",
+            "compilation": "FAIL - 0 error(s)",
+            "signal_processing": "PASS - 0 warning(s)",
+            "parameters": "PASS"
+          }
+        }
+      }
+    },
+    {
+      "name": "stereoToMono",
+      "category": "signal_flow",
+      "expectedStatus": "PASS",
+      "actualStatus": "FAIL",
+      "match": false,
+      "description": "Mix stereo to mono",
+      "result": {
+        "timestamp": "2025-12-11T22:13:07.040Z",
+        "code_length": 52,
+        "tests": {
+          "syntax": {
+            "valid": true,
+            "errors": [],
+            "warnings": [],
+            "summary": {
+              "totalErrors": 0,
+              "totalWarnings": 0,
+              "status": "VALID"
+            }
+          },
+          "compilation": {
+            "compilable": false,
+            "output": "/bin/sh: faust: command not found\n",
+            "errors": [],
+            "warnings": []
+          },
+          "signal_processing": {
+            "valid": true,
+            "issues": []
+          },
+          "parameters": {
+            "valid": true,
+            "issues": []
+          }
+        },
+        "summary": {
+          "overall_status": "FAIL",
+          "passed_tests": 3,
+          "failed_tests": 1,
+          "details": {
+            "syntax": "PASS - 0 warning(s)",
+            "compilation": "FAIL - 0 error(s)",
+            "signal_processing": "PASS - 0 warning(s)",
+            "parameters": "PASS"
+          }
+        }
+      }
+    },
+    {
+      "name": "sqrtOfPositive",
+      "category": "math_domain",
+      "expectedStatus": "PASS",
+      "actualStatus": "FAIL",
+      "match": false,
+      "description": "Valid mathematical domain operation",
+      "result": {
+        "timestamp": "2025-12-11T22:13:07.043Z",
+        "code_length": 50,
+        "tests": {
+          "syntax": {
+            "valid": true,
+            "errors": [],
+            "warnings": [],
+            "summary": {
+              "totalErrors": 0,
+              "totalWarnings": 0,
+              "status": "VALID"
+            }
+          },
+          "compilation": {
+            "compilable": false,
+            "output": "/bin/sh: faust: command not found\n",
+            "errors": [],
+            "warnings": []
+          },
+          "signal_processing": {
+            "valid": true,
+            "issues": []
+          },
+          "parameters": {
+            "valid": true,
+            "issues": []
+          }
+        },
+        "summary": {
+          "overall_status": "FAIL",
+          "passed_tests": 3,
+          "failed_tests": 1,
+          "details": {
+            "syntax": "PASS - 0 warning(s)",
+            "compilation": "FAIL - 0 error(s)",
+            "signal_processing": "PASS - 0 warning(s)",
+            "parameters": "PASS"
+          }
+        }
+      }
+    },
+    {
+      "name": "logOfPositive",
+      "category": "math_domain",
+      "expectedStatus": "PASS",
+      "actualStatus": "FAIL",
+      "match": false,
+      "description": "Valid logarithm operation",
+      "result": {
+        "timestamp": "2025-12-11T22:13:07.047Z",
+        "code_length": 98,
+        "tests": {
+          "syntax": {
+            "valid": true,
+            "errors": [],
+            "warnings": [],
+            "summary": {
+              "totalErrors": 0,
+              "totalWarnings": 0,
+              "status": "VALID"
+            }
+          },
+          "compilation": {
+            "compilable": false,
+            "output": "/bin/sh: faust: command not found\n",
+            "errors": [],
+            "warnings": []
+          },
+          "signal_processing": {
+            "valid": true,
+            "issues": []
+          },
+          "parameters": {
+            "valid": true,
+            "issues": []
+          }
+        },
+        "summary": {
+          "overall_status": "FAIL",
+          "passed_tests": 3,
+          "failed_tests": 1,
+          "details": {
+            "syntax": "PASS - 0 warning(s)",
+            "compilation": "FAIL - 0 error(s)",
+            "signal_processing": "PASS - 0 warning(s)",
+            "parameters": "PASS"
+          }
+        }
+      }
+    },
+    {
+      "name": "envelopeFollower",
+      "category": "advanced_pattern",
+      "expectedStatus": "PASS",
+      "actualStatus": "FAIL",
+      "match": false,
+      "description": "Extract envelope from signal",
+      "result": {
+        "timestamp": "2025-12-11T22:13:07.051Z",
+        "code_length": 176,
+        "tests": {
+          "syntax": {
+            "valid": true,
+            "errors": [],
+            "warnings": [],
+            "summary": {
+              "totalErrors": 0,
+              "totalWarnings": 0,
+              "status": "VALID"
+            }
+          },
+          "compilation": {
+            "compilable": false,
+            "output": "/bin/sh: faust: command not found\n",
+            "errors": [],
+            "warnings": []
+          },
+          "signal_processing": {
+            "valid": true,
+            "issues": []
+          },
+          "parameters": {
+            "valid": true,
+            "issues": []
+          }
+        },
+        "summary": {
+          "overall_status": "FAIL",
+          "passed_tests": 3,
+          "failed_tests": 1,
+          "details": {
+            "syntax": "PASS - 0 warning(s)",
+            "compilation": "FAIL - 0 error(s)",
+            "signal_processing": "PASS - 0 warning(s)",
+            "parameters": "PASS"
+          }
+        }
+      }
+    },
+    {
+      "name": "amplitudeModulation",
+      "category": "advanced_pattern",
+      "expectedStatus": "PASS",
+      "actualStatus": "FAIL",
+      "match": false,
+      "description": "Modulate amplitude with LFO",
+      "result": {
+        "timestamp": "2025-12-11T22:13:07.054Z",
+        "code_length": 243,
+        "tests": {
+          "syntax": {
+            "valid": true,
+            "errors": [],
+            "warnings": [],
+            "summary": {
+              "totalErrors": 0,
+              "totalWarnings": 0,
+              "status": "VALID"
+            }
+          },
+          "compilation": {
+            "compilable": false,
+            "output": "/bin/sh: faust: command not found\n",
+            "errors": [],
+            "warnings": []
+          },
+          "signal_processing": {
+            "valid": true,
+            "issues": []
+          },
+          "parameters": {
+            "valid": true,
+            "issues": []
+          }
+        },
+        "summary": {
+          "overall_status": "FAIL",
+          "passed_tests": 3,
+          "failed_tests": 1,
+          "details": {
+            "syntax": "PASS - 0 warning(s)",
+            "compilation": "FAIL - 0 error(s)",
+            "signal_processing": "PASS - 0 warning(s)",
+            "parameters": "PASS"
+          }
+        }
+      }
+    },
+    {
+      "name": "frequencyModulation",
+      "category": "advanced_pattern",
+      "expectedStatus": "PASS",
+      "actualStatus": "FAIL",
+      "match": false,
+      "description": "FM synthesis basic",
+      "result": {
+        "timestamp": "2025-12-11T22:13:07.058Z",
+        "code_length": 228,
+        "tests": {
+          "syntax": {
+            "valid": true,
+            "errors": [],
+            "warnings": [],
+            "summary": {
+              "totalErrors": 0,
+              "totalWarnings": 0,
+              "status": "VALID"
+            }
+          },
+          "compilation": {
+            "compilable": false,
+            "output": "/bin/sh: faust: command not found\n",
+            "errors": [],
+            "warnings": []
+          },
+          "signal_processing": {
+            "valid": true,
+            "issues": []
+          },
+          "parameters": {
+            "valid": true,
+            "issues": []
+          }
+        },
+        "summary": {
+          "overall_status": "FAIL",
+          "passed_tests": 3,
+          "failed_tests": 1,
+          "details": {
+            "syntax": "PASS - 0 warning(s)",
+            "compilation": "FAIL - 0 error(s)",
+            "signal_processing": "PASS - 0 warning(s)",
+            "parameters": "PASS"
+          }
+        }
+      }
+    }
+  ],
+  "summary": {
+    "basic_valid": {
+      "passed": 0,
+      "failed": 3,
+      "total": 3
+    },
+    "edge_case_empty": {
+      "passed": 2,
+      "failed": 0,
+      "total": 2
+    },
+    "edge_case_minimal": {
+      "passed": 0,
+      "failed": 1,
+      "total": 1
+    },
+    "error_syntax": {
+      "passed": 3,
+      "failed": 0,
+      "total": 3
+    },
+    "error_semantic": {
+      "passed": 2,
+      "failed": 0,
+      "total": 2
+    },
+    "complex_valid": {
+      "passed": 0,
+      "failed": 4,
+      "total": 4
+    },
+    "parameter_valid": {
+      "passed": 0,
+      "failed": 2,
+      "total": 2
+    },
+    "signal_flow": {
+      "passed": 0,
+      "failed": 3,
+      "total": 3
+    },
+    "math_domain": {
+      "passed": 0,
+      "failed": 2,
+      "total": 2
+    },
+    "advanced_pattern": {
+      "passed": 0,
+      "failed": 3,
+      "total": 3
+    }
+  }
+}

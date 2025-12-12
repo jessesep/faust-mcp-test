@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "proper-lockfile": "^4.1.2",
+    "tail": "^2.2.6"
+  }
+}
